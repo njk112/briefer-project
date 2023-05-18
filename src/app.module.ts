@@ -5,6 +5,7 @@ import { PrismaModule, loggingMiddleware } from 'nestjs-prisma';
 
 import config from './common/configs/config';
 import { BullModule } from '@nestjs/bull';
+import { Redis } from 'ioredis';
 
 @Module({
   imports: [
@@ -21,9 +22,8 @@ import { BullModule } from '@nestjs/bull';
         ],
       },
     }),
-    BullModule.forRoot({
-      redis: process.env.REDIS_URL,
-    }),
+    // upstash for some reason does not want to play along, so we use it this way
+    BullModule.forRoot({ redis: new Redis(process.env.REDIS_URL) as any }),
     CatsModule,
   ],
 })
