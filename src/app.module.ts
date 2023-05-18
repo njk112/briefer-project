@@ -1,8 +1,10 @@
 import { Module, Logger } from '@nestjs/common';
-import { CatsModule } from './cats/cats.module';
+import { CatsModule } from './youtube/youtube.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule, loggingMiddleware } from 'nestjs-prisma';
+
 import config from './common/configs/config';
+import { BullModule } from '@nestjs/bull';
 
 @Module({
   imports: [
@@ -18,6 +20,9 @@ import config from './common/configs/config';
           }),
         ],
       },
+    }),
+    BullModule.forRoot({
+      redis: process.env.REDIS_URL,
     }),
     CatsModule,
   ],

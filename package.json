@@ -20,17 +20,24 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs/bull": "^0.6.3",
     "@nestjs/common": "^9.0.0",
     "@nestjs/config": "^2.3.2",
     "@nestjs/core": "^9.0.0",
+    "@nestjs/passport": "^9.0.3",
     "@nestjs/platform-express": "^9.0.0",
     "@prisma/client": "^4.14.1",
+    "@supabase/supabase-js": "^2.22.0",
+    "bull": "^4.10.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
+    "into-stream": "^7.0.0",
     "joi": "^17.9.2",
     "nestjs-prisma": "^0.20.0",
+    "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.2.0"
+    "rxjs": "^7.2.0",
+    "ytdl-core": "^4.11.4"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",
