@@ -10,9 +10,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Cat {
-  id    Int    @id @default(autoincrement())
-  name  String
-  age   Int
-  breed String
+model YoutubeAudioLink {
+  id             String @id @default(uuid())
+  audioUrl       String @unique
+  youtubeId      String @unique
+  times_accessed Int    @default(0)
 }
