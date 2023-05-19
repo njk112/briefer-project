@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { DownloadFileDto } from './dtos/downloadFile.dto';
+import { UploadFileDto } from './dtos/uploadFile.dto';
 
 @Injectable()
 export class SupabaseService {
@@ -16,14 +18,25 @@ export class SupabaseService {
     return this.supabase;
   }
 
-  async uploadFile(bucket: string, path: string, file: any) {
+  async downloadFile(downloadFileDto: DownloadFileDto) {
     try {
       const { data, error } = await this.supabase.storage
-        .from(bucket)
-        .upload(path, file);
+        .from(downloadFileDto.bucket)
+        .download(`${downloadFileDto.path}/${downloadFileDto.fileName}`);
       return { data, error };
     } catch (error) {
-      console.log({ error });
+      throw { SUPABASE_DOWNLOAD_ERROR: { error } };
+    }
+  }
+
+  async uploadFile(uploadFileDto: UploadFileDto) {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from(uploadFileDto.bucket)
+        .upload(uploadFileDto.path, uploadFileDto.file);
+      return { data, error };
+    } catch (error) {
+      throw { SUPABASE_UPLOAD_ERROR: { error } };
     }
   }
 }
