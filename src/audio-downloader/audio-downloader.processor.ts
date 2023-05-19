@@ -5,7 +5,6 @@ import { Job } from 'bull';
 import { PrismaService } from 'nestjs-prisma';
 import { SupabaseService } from 'src/common/supabase/supabase.service';
 import * as ytdl from 'ytdl-core';
-
 @Processor('youtube-audio')
 export class AudioDownloaderProcessor {
   constructor(
@@ -14,20 +13,21 @@ export class AudioDownloaderProcessor {
   ) {}
   private readonly logger = new Logger(AudioDownloaderProcessor.name);
 
-  async youtubeDownload(url: string): Promise<[Buffer, ytdl.videoInfo]> {
-    const info = await ytdl.getInfo(url);
-    const format = ytdl.chooseFormat(info.formats, { quality: 'highest' });
-    if (format) {
-      const videoStream = ytdl(url);
-      const chunks = [];
+  async getYoutubeVideoInfo(url: string): Promise<any> {
+    const youtubeInfo = await ytdl.getInfo(url);
+    return youtubeInfo;
+  }
 
-      for await (const chunk of videoStream) {
-        chunks.push(chunk);
-      }
-
-      const buffer = Buffer.concat(chunks);
-      return [buffer, info];
+  async getYoutubeAudioBuffer(url: string): Promise<Buffer> {
+    const stream = ytdl(url, {
+      filter: (format) => format.container === 'mp4',
+    });
+    const chunks = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
     }
+    const buffer = Buffer.concat(chunks);
+    return buffer;
   }
 
   async uploadToSupabaseStorage(
@@ -75,6 +75,34 @@ export class AudioDownloaderProcessor {
     }
   }
 
+  async getYoutubeAudioInformation(
+    videoURL: string,
+  ): Promise<[string, ytdl.videoInfo]> {
+    const videoid = ytdl.getURLVideoID(videoURL);
+    const info = await ytdl.getInfo(videoid);
+
+    const format = ytdl.filterFormats(info.formats, 'audioonly');
+    let audioUrl = '';
+    format.forEach((element) => {
+      if (element.mimeType == `audio/mp4; codecs="mp4a.40.2"`) {
+        audioUrl = element.url;
+      }
+    });
+
+    return [audioUrl, info];
+  }
+
+  async downloadAudioFromUrl(url: string): Promise<ArrayBuffer> {
+    if (url === '') return;
+    const response = await fetch(url);
+    if (!response.ok)
+      throw new Error(`unexpected response ${response.statusText}`);
+
+    const buffer = await response.arrayBuffer();
+
+    return buffer;
+  }
+
   @Process('download')
   async handleDownload(job: Job<{ url: string; userId: string }>) {
     this.logger.debug('Start transcoding...');
@@ -83,29 +111,36 @@ export class AudioDownloaderProcessor {
     const { url, userId } = job.data;
 
     const video = await this.getVideo(url);
-    console.log({ video });
     if (video) {
       this.logger.debug('Video already exists');
       return video.audioUrl;
     }
+    const [audioUrl, videoInfo] = await this.getYoutubeAudioInformation(url);
+    let audioBufferArray: ArrayBuffer;
 
-    const [youtubeBuffer, info] = await this.youtubeDownload(url);
+    try {
+      audioBufferArray = await this.downloadAudioFromUrl(audioUrl);
+      this.logger.debug('Audio download completed');
+    } catch (error) {
+      this.logger.debug({ DOWNLOAD_WORKER_ERROR: { job: job.id, error } });
+      throw new Error(error);
+    }
 
-    if (youtubeBuffer) {
+    if (audioBufferArray) {
       try {
         const data = await this.uploadToSupabaseStorage(
           process.env.YOUTUBE_AUDIO_BUCKET,
-          `${info.videoDetails.videoId}.mp4`,
-          youtubeBuffer,
+          `${videoInfo.videoDetails.videoId}.mp4`,
+          audioBufferArray,
         );
 
         const prismaUpload = await this.uploadToPrisma(
           data.path,
-          info.videoDetails.videoId,
+          videoInfo.videoDetails.videoId,
         );
         this.logger.log({ prismaUpload });
 
-        this.logger.debug('Transcoding completed');
+        this.logger.debug('Audio download completed');
         return { path: data.path };
       } catch (error) {
         this.logger.debug({ DOWNLOAD_WORKER_ERROR: { job: job.id, error } });
