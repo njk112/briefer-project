@@ -13,23 +13,6 @@ export class AudioDownloaderProcessor {
   ) {}
   private readonly logger = new Logger(AudioDownloaderProcessor.name);
 
-  async getYoutubeVideoInfo(url: string): Promise<any> {
-    const youtubeInfo = await ytdl.getInfo(url);
-    return youtubeInfo;
-  }
-
-  async getYoutubeAudioBuffer(url: string): Promise<Buffer> {
-    const stream = ytdl(url, {
-      filter: (format) => format.container === 'mp4',
-    });
-    const chunks = [];
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
-    return buffer;
-  }
-
   async uploadToSupabaseStorage(
     bucket: string,
     path: string,
