@@ -11,8 +11,18 @@ datasource db {
 }
 
 model YoutubeAudioLink {
-  id             String @id @default(uuid())
-  audioUrl       String @unique
-  youtubeId      String @unique
-  times_accessed Int    @default(0)
+  id              String           @id @default(uuid())
+  audioUrl        String           @unique
+  youtubeId       String           @unique
+  times_accessed  Int              @default(0)
+  YoutubeTextLink YoutubeTextLink?
+}
+
+model YoutubeTextLink {
+  id                 String           @id @default(uuid())
+  youtubeAudioLinkId String           @unique
+  youtubeAudioLink   YoutubeAudioLink @relation(fields: [youtubeAudioLinkId], references: [id])
+  youtubeId          String           @unique
+  times_accessed     Int              @default(0)
+  textUrl            String           @unique
 }
