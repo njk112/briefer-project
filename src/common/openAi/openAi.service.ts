@@ -1,33 +1,41 @@
 import { Injectable } from '@nestjs/common';
-import { Configuration, OpenAIApi } from 'openai';
+import { WhisperResponseDto } from './dtos/whisper.dto';
 
 @Injectable()
 export class OpenAiService {
-  private openAi: OpenAIApi;
-  constructor() {
-    const configuration = new Configuration({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-    this.openAi = new OpenAIApi(configuration);
-  }
-
   async gpt4TextToSummary() {
     return;
   }
 
-  async whisperAudioToText(audioFile: File) {
+  async createWhisperFormData(file: Blob, fileName: string) {
+    const formData = new FormData();
+    formData.append('file', file, fileName);
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'en');
+    return formData;
+  }
+
+  async whisperAudioToText(
+    blob: Blob,
+    fileName: string,
+  ): Promise<WhisperResponseDto> {
+    const formData = await this.createWhisperFormData(blob, fileName);
     try {
-      const transcript = await this.openAi.createTranscription(
-        audioFile,
-        'whisper-1',
-      );
-      return transcript?.data?.text;
-    } catch (error) {
-      throw {
-        OPEN_AI_WHISPER_ERROR: {
-          error,
+      const res = await fetch(
+        `https://api.openai.com/v1/audio/transcriptions`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.OPEN_AI_API_KEY}`,
+            Accept: 'application/json',
+          },
+          body: formData,
         },
-      };
+      );
+      const textData: WhisperResponseDto = await res.json();
+      return textData;
+    } catch (error) {
+      throw error;
     }
   }
 }
