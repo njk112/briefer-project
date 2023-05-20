@@ -9,3 +9,13 @@ export class QueueJobDto {
   @ArrayNotEmpty()
   urls: string[];
 }
+
+export class TranscribeJobDto {
+  @IsString()
+  @IsNotEmpty()
+  userId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  fileId: string;
+}
