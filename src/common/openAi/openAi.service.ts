@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { WhisperResponseDto } from './dtos/whisper.dto';
 import { encodeGenerator } from 'gpt-tokenizer';
 import { ChatResponseDto, MessageDto } from './dtos/chat.dto';
@@ -7,6 +7,7 @@ import { OpenAiConfig } from '../configs/config.interface';
 
 @Injectable()
 export class OpenAiService {
+  private readonly logger = new Logger(OpenAiService.name);
   private openApiKey: string;
   private whisperEndpoint: string;
   private whisperModel: string;
@@ -52,6 +53,11 @@ export class OpenAiService {
       const summaryData: ChatResponseDto = await res.json();
       return summaryData.choices[0].message.content;
     } catch (error) {
+      this.logger.error(
+        `OPENAI_SERVICE: Error in chatGptToSummary: messages: ${JSON.stringify(
+          messages,
+        )}, error: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -81,6 +87,9 @@ export class OpenAiService {
       const textData: WhisperResponseDto = await res.json();
       return textData;
     } catch (error) {
+      this.logger.error(
+        `OPENAI_SERVICE: Error in whisperAudioToText: fileName: ${fileName}, error: ${error.message}`,
+      );
       throw error;
     }
   }
