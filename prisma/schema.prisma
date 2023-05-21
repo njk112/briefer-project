@@ -5,43 +5,78 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator erd {
+  provider = "prisma-erd-generator"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                String              @id @default(uuid())
+  email             String              @unique
+  UserBriefingOrder UserBriefingOrder[]
+}
+
+model UserBriefingOrder {
+  id                String            @id @default(uuid())
+  User              User              @relation(fields: [userId], references: [id])
+  userId            String
+  totalVideos       Int
+  videosProccessed  Int               @default(0)
+  YoutubeVideo      YoutubeVideo[]
+  BrieferPdfReports BrieferPdfReport?
+}
+
+model YoutubeVideo {
+  id                  String                @id @default(uuid())
+  youtubeId           String                @unique
+  timesAccessed       Int                   @default(0)
+  UserBriefingOrder   UserBriefingOrder     @relation(fields: [userBriefingOrderId], references: [id])
+  userBriefingOrderId String
+  YoutubeAudioLink    YoutubeAudioLink?
+  YoutubeTextLink     YoutubeTextLink?
+  YoutubeVideoSummary YoutubeVideoSummary[] @relation("VideoSummaries")
+  BrieferPdfReports   BrieferPdfReport[]    @relation("VideoBrieferReports")
+}
+
 model YoutubeAudioLink {
-  id              String           @id @default(uuid())
-  audioUrl        String           @unique
-  youtubeId       String           @unique
-  times_accessed  Int              @default(0)
-  YoutubeTextLink YoutubeTextLink?
+  id             String       @id @default(uuid())
+  audioUrl       String       @unique
+  youtubeId      String       @unique
+  timesAccessed  Int          @default(0)
+  YoutubeVideo   YoutubeVideo @relation(fields: [youtubeVideoId], references: [id])
+  youtubeVideoId String       @unique
 }
 
 model YoutubeTextLink {
-  id                  String                @id @default(uuid())
-  youtubeAudioLinkId  String                @unique
-  youtubeAudioLink    YoutubeAudioLink      @relation(fields: [youtubeAudioLinkId], references: [id])
-  youtubeId           String                @unique
-  times_accessed      Int                   @default(0)
-  textUrl             String                @unique
-  YoutubeVideoSummary YoutubeVideoSummary[]
+  id             String       @id @default(uuid())
+  youtubeId      String       @unique
+  timesAccessed  Int          @default(0)
+  textUrl        String       @unique
+  YoutubeVideo   YoutubeVideo @relation(fields: [youtubeVideoId], references: [id])
+  youtubeVideoId String       @unique
 }
 
 model YoutubeVideoSummary {
-  id                String              @id @default(uuid())
-  youtubeId         String              @unique
-  times_accessed    Int                 @default(0)
+  id                String             @id @default(uuid())
+  youtubeId         String             @unique
+  timesAccessed     Int                @default(0)
   summary           String
-  YoutubeTextLink   YoutubeTextLink     @relation(fields: [youtubeTextLinkId], references: [id])
-  youtubeTextLinkId String
-  BrieferPdfReports BrieferPdfReports[]
+  YoutubeVideo      YoutubeVideo       @relation("VideoSummaries", fields: [youtubeVideoId], references: [id])
+  youtubeVideoId    String
+  BrieferPdfReports BrieferPdfReport[]
 }
 
-model BrieferPdfReports {
-  id             String                @id @default(uuid())
-  pdfUrl         String                @unique
-  isSent         Boolean               @default(false)
-  times_accessed Int                   @default(0)
-  videoSummary   YoutubeVideoSummary[]
+model BrieferPdfReport {
+  id                  String                @id @default(uuid())
+  pdfUrl              String                @unique
+  isSent              Boolean               @default(false)
+  timesAccessed       Int                   @default(0)
+  YoutubeVideo        YoutubeVideo[]        @relation("VideoBrieferReports")
+  videoSummary        YoutubeVideoSummary[]
+  UserBriefingOrder   UserBriefingOrder     @relation(fields: [userBriefingOrderId], references: [id])
+  userBriefingOrderId String                @unique
 }
