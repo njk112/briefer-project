@@ -19,6 +19,7 @@ const config: Config = {
   },
   storage: {
     bucket: process.env.YOUTUBE_BUCKET,
+    pdfPath: 'summaries',
     audioPath: 'audio',
     audioFormat: '.mp4',
     textPath: 'text',

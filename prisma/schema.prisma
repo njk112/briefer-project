@@ -29,10 +29,19 @@ model YoutubeTextLink {
 }
 
 model YoutubeVideoSummary {
-  id                String           @id @default(uuid())
-  youtubeId         String           @unique
-  times_accessed    Int              @default(0)
+  id                String              @id @default(uuid())
+  youtubeId         String              @unique
+  times_accessed    Int                 @default(0)
   summary           String
-  YoutubeTextLink   YoutubeTextLink @relation(fields: [youtubeTextLinkId], references: [id])
+  YoutubeTextLink   YoutubeTextLink     @relation(fields: [youtubeTextLinkId], references: [id])
   youtubeTextLinkId String
+  BrieferPdfReports BrieferPdfReports[]
+}
+
+model BrieferPdfReports {
+  id             String                @id @default(uuid())
+  pdfUrl         String                @unique
+  isSent         Boolean               @default(false)
+  times_accessed Int                   @default(0)
+  videoSummary   YoutubeVideoSummary[]
 }

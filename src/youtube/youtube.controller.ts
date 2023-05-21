@@ -1,6 +1,7 @@
 import { Body, Controller, Post, ValidationPipe } from '@nestjs/common';
 import { YoutubeService } from './youtube.service';
 import {
+  GeneratePdfDto,
   QueueJobDto,
   SummaryJobDto,
   TranscribeJobDto,
@@ -25,5 +26,10 @@ export class YoutubeController {
   @Post('summarise')
   async queueSummary(@Body(new ValidationPipe()) queueJobDto: SummaryJobDto) {
     return await this.youtubeService.queueSummariseJobs(queueJobDto);
+  }
+
+  @Post('generate-pdf')
+  async generatePdf(@Body(new ValidationPipe()) queueJobDto: GeneratePdfDto) {
+    return await this.youtubeService.queueGeneratePdfJobs(queueJobDto);
   }
 }

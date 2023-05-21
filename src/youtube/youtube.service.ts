@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'nestjs-prisma';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { QueueJobDto, TranscribeJobDto } from './dto/queue-jobs.dto';
+import {
+  GeneratePdfDto,
+  QueueJobDto,
+  TranscribeJobDto,
+} from './dto/queue-jobs.dto';
 
 @Injectable()
 export class YoutubeService {
@@ -11,6 +15,7 @@ export class YoutubeService {
     @InjectQueue('youtube-audio') private audioQueue: Queue,
     @InjectQueue('audio-to-text') private transcribeQueue: Queue,
     @InjectQueue('text-summariser') private summariserQueue: Queue,
+    @InjectQueue('pdf-generator') private pdfGeneratorQueue: Queue,
   ) {}
 
   async queueJobs(queueJobs: QueueJobDto) {
@@ -36,6 +41,14 @@ export class YoutubeService {
     const { fileId, userId } = queueJob;
     const jobs = [{ name: 'summarise', data: { fileId, userId } }];
     const jobsQueue = await this.summariserQueue.addBulk(jobs);
+
+    return jobsQueue;
+  }
+
+  async queueGeneratePdfJobs(queueJob: GeneratePdfDto) {
+    const { fileIds, userId } = queueJob;
+    const jobs = [{ name: 'generatePdf', data: { fileIds, userId } }];
+    const jobsQueue = await this.pdfGeneratorQueue.addBulk(jobs);
 
     return jobsQueue;
   }

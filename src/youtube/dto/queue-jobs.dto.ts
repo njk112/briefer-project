@@ -29,3 +29,13 @@ export class SummaryJobDto {
   @IsNotEmpty()
   fileId: string;
 }
+
+export class GeneratePdfDto {
+  @IsString()
+  @IsNotEmpty()
+  userId: string;
+
+  @IsArray()
+  @ArrayNotEmpty()
+  fileIds: string[];
+}

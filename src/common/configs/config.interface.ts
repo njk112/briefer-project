@@ -32,6 +32,7 @@ export interface RedisConfig {
 export interface StorageConfig {
   bucket: string;
   audioPath: string;
+  pdfPath: string;
   audioFormat: string;
   textPath: string;
   textFormat: string;
