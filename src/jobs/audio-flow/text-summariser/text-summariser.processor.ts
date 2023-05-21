@@ -6,25 +6,44 @@ import { PrismaService } from 'nestjs-prisma';
 import { OpenAiService } from 'src/common/openAi/openAi.service';
 import { SupabaseService } from 'src/common/supabase/supabase.service';
 import { SummaryJobDto } from 'src/youtube/dto/queue-jobs.dto';
+import {
+  OpenAiConfig,
+  StorageConfig,
+} from 'src/common/configs/config.interface';
 
 @Injectable()
 @Processor('text-summariser')
 export class TextSummariserProcessor {
   private readonly logger = new Logger(TextSummariserProcessor.name);
-
+  private storageBucket: string;
+  private storageTextPath: string;
+  private storageTextFormat: string;
+  private openAiTokenLimit: number;
+  private whisperFinalPromt: string;
   constructor(
     private supabaseService: SupabaseService,
     private prismaService: PrismaService,
     private openAiService: OpenAiService,
     private configService: ConfigService,
-  ) {}
+  ) {
+    this.storageBucket =
+      this.configService.get<StorageConfig>('storage').bucket;
+    this.storageTextPath =
+      this.configService.get<StorageConfig>('storage').textPath;
+    this.storageTextFormat =
+      this.configService.get<StorageConfig>('storage').textFormat;
+    this.openAiTokenLimit =
+      this.configService.get<OpenAiConfig>('openAi').tokenLimit;
+    this.whisperFinalPromt =
+      this.configService.get<OpenAiConfig>('openAi').whisperFinalPrompt;
+  }
 
-  async downloadTextFile(bucket: string, fileId: string) {
+  async downloadTextFile(fileId: string) {
     try {
       const { data, error } = await this.supabaseService.downloadFile({
-        bucket,
-        path: 'text',
-        fileName: `${fileId}.txt`,
+        bucket: this.storageBucket,
+        path: this.storageTextPath,
+        fileName: `${fileId}${this.storageTextFormat}`,
       });
       if (error) {
         this.logger.error(
@@ -41,9 +60,9 @@ export class TextSummariserProcessor {
     }
   }
 
-  async uploadToPrisma(textData: string, fileId: string): Promise<any> {
+  async uploadToPrisma(textData: string, fileId: string): Promise<void> {
     try {
-      const prismaUpload = await this.prismaService.youtubeVideoSummary.create({
+      await this.prismaService.youtubeVideoSummary.create({
         data: {
           summary: textData,
           youtubeId: fileId,
@@ -54,7 +73,6 @@ export class TextSummariserProcessor {
           },
         },
       });
-      return prismaUpload;
     } catch (error) {
       this.logger.error(
         `TEXT_SUMMARISER_WORKER: Failed to upload to Prisma: textData: ${textData}, fileId: ${fileId}, error: ${error.message}`,
@@ -63,7 +81,7 @@ export class TextSummariserProcessor {
     }
   }
 
-  processText(textData: string, gptTokenLimit: number) {
+  processText(textData: string, gptTokenLimit: number = this.openAiTokenLimit) {
     const tokenCount = this.openAiService.getTokenCount(textData);
     const chunksNeeded = Math.ceil(tokenCount / gptTokenLimit);
     return this.chunkText(textData, gptTokenLimit, chunksNeeded);
@@ -94,7 +112,7 @@ export class TextSummariserProcessor {
     }
     const finalPrompt = {
       role: 'user',
-      content: 'Write me a summary of these text parts. Fit in 4 sentences.', // config
+      content: this.whisperFinalPromt,
     };
     chunks.push(finalPrompt);
 
@@ -106,13 +124,11 @@ export class TextSummariserProcessor {
     this.logger.debug('Starting summarising text...');
     this.logger.debug(job.data);
     const { userId, fileId } = job.data;
-    const youtubeBucket = process.env.YOUTUBE_BUCKET;
 
-    const textBlob = await this.downloadTextFile(youtubeBucket, fileId);
+    const textBlob = await this.downloadTextFile(fileId);
     const textData = await textBlob.text();
-    const gptTokenLimit = 4096; // config
 
-    const textChunks = this.processText(textData, gptTokenLimit);
+    const textChunks = this.processText(textData);
 
     const gptAnswer = await this.openAiService.chatGptToSummary(textChunks);
     await this.uploadToPrisma(gptAnswer, fileId);

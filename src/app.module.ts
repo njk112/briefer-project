@@ -1,11 +1,12 @@
 import { Module, Logger } from '@nestjs/common';
 import { CatsModule } from './youtube/youtube.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config'; // Make sure to import ConfigService
 import { PrismaModule, loggingMiddleware } from 'nestjs-prisma';
 
 import config from './common/configs/config';
 import { BullModule } from '@nestjs/bull';
 import { Redis } from 'ioredis';
+import { RedisConfig } from './common/configs/config.interface';
 
 @Module({
   imports: [
@@ -14,7 +15,6 @@ import { Redis } from 'ioredis';
       isGlobal: true,
       prismaServiceOptions: {
         middlewares: [
-          // configure your prisma middleware
           loggingMiddleware({
             logger: new Logger('PrismaMiddleware'),
             logLevel: 'log',
@@ -22,8 +22,15 @@ import { Redis } from 'ioredis';
         ],
       },
     }),
-    // upstash for some reason does not want to play along, so we use it this way
-    BullModule.forRoot({ redis: new Redis(process.env.REDIS_URL) as any }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        redis: new Redis(
+          configService.get<RedisConfig>('redis').redisUrl,
+        ) as any,
+      }),
+      inject: [ConfigService],
+    }),
     CatsModule,
   ],
 })

@@ -2,9 +2,30 @@ import { Injectable } from '@nestjs/common';
 import { WhisperResponseDto } from './dtos/whisper.dto';
 import { encodeGenerator } from 'gpt-tokenizer';
 import { ChatResponseDto, MessageDto } from './dtos/chat.dto';
+import { ConfigService } from '@nestjs/config';
+import { OpenAiConfig } from '../configs/config.interface';
 
 @Injectable()
 export class OpenAiService {
+  private openApiKey: string;
+  private whisperEndpoint: string;
+  private whisperModel: string;
+  private whisperLanguage: string;
+  private chatEndpoint: string;
+  private chatModel: string;
+  constructor(private configService: ConfigService) {
+    this.openApiKey = this.configService.get<OpenAiConfig>('openAi').apiKey;
+    this.whisperEndpoint =
+      this.configService.get<OpenAiConfig>('openAi').whisperEndpoint;
+    this.whisperModel =
+      this.configService.get<OpenAiConfig>('openAi').whisperModel;
+    this.whisperLanguage =
+      this.configService.get<OpenAiConfig>('openAi').whisperLanguage;
+    this.chatEndpoint =
+      this.configService.get<OpenAiConfig>('openAi').chatEndpoint;
+    this.chatModel = this.configService.get<OpenAiConfig>('openAi').chatModel;
+  }
+
   getTokenCount(text: string, cache = new Map()): number {
     const tokenGenerator = encodeGenerator(text, cache);
     let count = 0;
@@ -16,15 +37,15 @@ export class OpenAiService {
 
   async chatGptToSummary(messages: MessageDto[]): Promise<string> {
     try {
-      const res = await fetch(`https://api.openai.com/v1/chat/completions`, {
+      const res = await fetch(this.chatEndpoint, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.OPEN_AI_API_KEY}`,
+          Authorization: `Bearer ${this.openApiKey}`,
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: this.chatModel,
           messages,
         }),
       });
@@ -38,8 +59,8 @@ export class OpenAiService {
   createWhisperFormData(file: Blob, fileName: string) {
     const formData = new FormData();
     formData.append('file', file, fileName);
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'en');
+    formData.append('model', this.whisperModel);
+    formData.append('language', this.whisperLanguage);
     return formData;
   }
 
@@ -49,17 +70,14 @@ export class OpenAiService {
   ): Promise<WhisperResponseDto> {
     const formData = this.createWhisperFormData(blob, fileName);
     try {
-      const res = await fetch(
-        `https://api.openai.com/v1/audio/transcriptions`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.OPEN_AI_API_KEY}`,
-            Accept: 'application/json',
-          },
-          body: formData,
+      const res = await fetch(this.whisperEndpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.openApiKey}`,
+          Accept: 'application/json',
         },
-      );
+        body: formData,
+      });
       const textData: WhisperResponseDto = await res.json();
       return textData;
     } catch (error) {
