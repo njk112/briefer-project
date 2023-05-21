@@ -39,3 +39,13 @@ export class GeneratePdfDto {
   @ArrayNotEmpty()
   fileIds: string[];
 }
+
+export class SendEmailDto {
+  @IsString()
+  @IsNotEmpty()
+  userId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  fileId: string;
+}

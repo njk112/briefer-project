@@ -5,6 +5,7 @@ import { Queue } from 'bull';
 import {
   GeneratePdfDto,
   QueueJobDto,
+  SendEmailDto,
   TranscribeJobDto,
 } from './dto/queue-jobs.dto';
 
@@ -16,6 +17,7 @@ export class YoutubeService {
     @InjectQueue('audio-to-text') private transcribeQueue: Queue,
     @InjectQueue('text-summariser') private summariserQueue: Queue,
     @InjectQueue('pdf-generator') private pdfGeneratorQueue: Queue,
+    @InjectQueue('email-sender') private emailSenderQueue: Queue,
   ) {}
 
   async queueJobs(queueJobs: QueueJobDto) {
@@ -49,6 +51,14 @@ export class YoutubeService {
     const { fileIds, userId } = queueJob;
     const jobs = [{ name: 'generatePdf', data: { fileIds, userId } }];
     const jobsQueue = await this.pdfGeneratorQueue.addBulk(jobs);
+
+    return jobsQueue;
+  }
+
+  async queueSendEmailJobs(queueJob: SendEmailDto) {
+    const { fileId, userId } = queueJob;
+    const jobs = [{ name: 'sendEmail', data: { fileId, userId } }];
+    const jobsQueue = await this.emailSenderQueue.addBulk(jobs);
 
     return jobsQueue;
   }

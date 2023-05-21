@@ -6,6 +6,7 @@ export interface Config {
   redis: RedisConfig;
   storage: StorageConfig;
   openAi: OpenAiConfig;
+  mailJet: MailJetConfig;
 }
 
 export interface NestConfig {
@@ -47,4 +48,14 @@ export interface OpenAiConfig {
   whisperLanguage: string;
   tokenLimit: number;
   whisperFinalPrompt: string;
+}
+
+export interface MailJetConfig {
+  apiKey: string;
+  apiSecret: string;
+  fromEmail: string;
+  fromName: string;
+  subject: string;
+  text: string;
+  contentType: string;
 }

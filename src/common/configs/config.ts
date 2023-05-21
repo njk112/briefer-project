@@ -36,6 +36,15 @@ const config: Config = {
     whisperFinalPrompt:
       'Write me a summary of these text parts. Fit in 4 sentences.',
   },
+  mailJet: {
+    apiKey: process.env.MAILJET_API_KEY,
+    apiSecret: process.env.MAILJET_SECRET_KEY,
+    fromEmail: 'naglis98@outlook.com',
+    fromName: 'Briefer',
+    subject: 'Briefer: Here is your summary!',
+    text: 'Hi, here is your summary!',
+    contentType: 'application/pdf',
+  },
 };
 
 export default (): Config => config;

@@ -3,6 +3,7 @@ import { YoutubeService } from './youtube.service';
 import {
   GeneratePdfDto,
   QueueJobDto,
+  SendEmailDto,
   SummaryJobDto,
   TranscribeJobDto,
 } from './dto/queue-jobs.dto';
@@ -31,5 +32,10 @@ export class YoutubeController {
   @Post('generate-pdf')
   async generatePdf(@Body(new ValidationPipe()) queueJobDto: GeneratePdfDto) {
     return await this.youtubeService.queueGeneratePdfJobs(queueJobDto);
+  }
+
+  @Post('send-email')
+  async sendEmail(@Body(new ValidationPipe()) queueJobDto: SendEmailDto) {
+    return await this.youtubeService.queueSendEmailJobs(queueJobDto);
   }
 }

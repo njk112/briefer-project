@@ -5,6 +5,7 @@ import { AudioDownloaderModule } from 'src/jobs/audio-flow/audio-downloader/audi
 import { AudioToTextModule } from 'src/jobs/audio-flow/audio-to-text/audio-to-text.module';
 import { TextSummariserModule } from 'src/jobs/audio-flow/text-summariser/text-summariser.module';
 import { PdfGeneratorModule } from 'src/jobs/email-flow/pdf-generator/pdf-generator.module';
+import { EmailSenderModule } from 'src/jobs/email-flow/email-sender/email-sender.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { PdfGeneratorModule } from 'src/jobs/email-flow/pdf-generator/pdf-genera
     AudioToTextModule,
     TextSummariserModule,
     PdfGeneratorModule,
+    EmailSenderModule,
   ],
   controllers: [YoutubeController],
   providers: [YoutubeService],
