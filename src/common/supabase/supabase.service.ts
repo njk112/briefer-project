@@ -18,6 +18,17 @@ export class SupabaseService {
     return this.supabase;
   }
 
+  async getBucketFiles(bucket: string) {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from(bucket)
+        .list('text', { limit: 100 });
+      return { data, error };
+    } catch (error) {
+      throw { SUPABASE_GET_BUCKET_FILES_ERROR: { error } };
+    }
+  }
+
   async downloadFile(downloadFileDto: DownloadFileDto) {
     try {
       const { data, error } = await this.supabase.storage
