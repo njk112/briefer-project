@@ -19,10 +19,20 @@ model YoutubeAudioLink {
 }
 
 model YoutubeTextLink {
-  id                 String           @id @default(uuid())
-  youtubeAudioLinkId String           @unique
-  youtubeAudioLink   YoutubeAudioLink @relation(fields: [youtubeAudioLinkId], references: [id])
-  youtubeId          String           @unique
-  times_accessed     Int              @default(0)
-  textUrl            String           @unique
+  id                  String                @id @default(uuid())
+  youtubeAudioLinkId  String                @unique
+  youtubeAudioLink    YoutubeAudioLink      @relation(fields: [youtubeAudioLinkId], references: [id])
+  youtubeId           String                @unique
+  times_accessed      Int                   @default(0)
+  textUrl             String                @unique
+  YoutubeVideoSummary YoutubeVideoSummary[]
+}
+
+model YoutubeVideoSummary {
+  id                String           @id @default(uuid())
+  youtubeId         String           @unique
+  times_accessed    Int              @default(0)
+  summary           String
+  YoutubeTextLink   YoutubeTextLink @relation(fields: [youtubeTextLinkId], references: [id])
+  youtubeTextLinkId String
 }

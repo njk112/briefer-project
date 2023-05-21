@@ -19,3 +19,13 @@ export class TranscribeJobDto {
   @IsNotEmpty()
   fileId: string;
 }
+
+export class SummaryJobDto {
+  @IsString()
+  @IsNotEmpty()
+  userId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  fileId: string;
+}

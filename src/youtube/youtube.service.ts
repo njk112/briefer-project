@@ -10,6 +10,7 @@ export class YoutubeService {
     private prisma: PrismaService,
     @InjectQueue('youtube-audio') private audioQueue: Queue,
     @InjectQueue('audio-to-text') private transcribeQueue: Queue,
+    @InjectQueue('text-summariser') private summariserQueue: Queue,
   ) {}
 
   async queueJobs(queueJobs: QueueJobDto) {
@@ -27,6 +28,14 @@ export class YoutubeService {
     const { fileId, userId } = queueJob;
     const jobs = [{ name: 'transcribe', data: { fileId, userId } }];
     const jobsQueue = await this.transcribeQueue.addBulk(jobs);
+
+    return jobsQueue;
+  }
+
+  async queueSummariseJobs(queueJob: TranscribeJobDto) {
+    const { fileId, userId } = queueJob;
+    const jobs = [{ name: 'summarise', data: { fileId, userId } }];
+    const jobsQueue = await this.summariserQueue.addBulk(jobs);
 
     return jobsQueue;
   }
