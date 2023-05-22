@@ -23,8 +23,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:migrate:dev": "prisma migrate dev --name \"$(date +%s)\"",
     "prisma:format": "prisma format",
-    "kill": "lsof -ti :3000 | xargs kill",
-    "postinstall": "npm install ytdl-core"
+    "kill": "lsof -ti :3000 | xargs kill"
   },
   "dependencies": {
     "@nestjs/bull": "^0.6.3",
