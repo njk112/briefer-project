@@ -7,6 +7,17 @@ import { PrismaException } from '../../exceptions/prisma.exceptions';
 export class YoutubeAudioLinkService {
   constructor(private prisma: PrismaService) {}
   private readonly logger = new Logger(YoutubeAudioLinkService.name);
+  private handleError(error: any, data: any, entity: string, action: string) {
+    const prismaException = new PrismaException(
+      JSON.stringify(data),
+      error.message,
+      entity,
+      action,
+    );
+
+    this.logger.error(prismaException);
+    throw prismaException;
+  }
 
   async createYoutubeAudioLink(data: Prisma.YoutubeAudioLinkCreateInput) {
     try {
@@ -14,15 +25,7 @@ export class YoutubeAudioLinkService {
         data,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(data),
-        error.message,
-        'youtubeAudioLink',
-        'create',
-      );
-
-      this.logger.error(prismaException);
-      throw prismaException;
+      this.handleError(error, data, 'youtubeAudioLink', 'create');
     }
   }
 }

@@ -9,6 +9,7 @@ import { PdfGeneratorDto } from './dto/pdfGenerator.dto';
 import { UserBriefingOrderService } from 'src/common/prisma-related/user-related/UserBriefingOrder/user-briefing-order.service';
 import { PdfGeneratorYoutubeVideo } from './types/videoSummaries.type';
 import { BrieferPdfReportService } from 'src/common/prisma-related/BrieferPdfReport/briefer-pdf-report.service';
+import { PdfGeneratorException } from './exceptions/pdf-generator.exceptions';
 
 @Processor('pdf-generator')
 export class PdfGeneratorProcessor {
@@ -31,49 +32,58 @@ export class PdfGeneratorProcessor {
 
   private readonly logger = new Logger(PdfGeneratorProcessor.name);
 
+  private handleError(error: any): void {
+    const pdfGeneratorException = new PdfGeneratorException(error.message);
+    this.logger.error(pdfGeneratorException);
+    throw error;
+  }
+
   private createHtmlFromData(data: PdfGeneratorYoutubeVideo[]): string {
-    let html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-            .header { padding: 20px; font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 0.1em; }
-            .content { padding: 2rem; text-align: justify; }
-            .summary { font-size: 16px; }
-            .page-break { page-break-after: always; }
-        </style>
-    </head>
-    <body>
-        <div class="header">BRIEFER</div>
-        <div class="content">
-            <h2>Table of Contents:</h2>
-            <ol>
-    `;
-
-    data.forEach((item) => {
-      html += `<li>${item.title}</li>`;
-    });
-
-    html += `</ol>`;
-
-    data.forEach((item) => {
-      html += `
-          <div class="page-break"></div>
-          <div class="header">${item.title}</div>
+    try {
+      let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <style>
+              body { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+              .header { padding: 20px; font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 0.1em; }
+              .content { padding: 2rem; text-align: justify; }
+              .summary { font-size: 16px; }
+              .page-break { page-break-after: always; }
+          </style>
+      </head>
+      <body>
+          <div class="header">BRIEFER</div>
           <div class="content">
-            <h3>Summary:</h3>
-            <p class="summary">${item.YoutubeVideoSummary.summary}</p>
-            <p>URL: <a href="https://www.youtube.com/watch?v=${
-              item.youtubeId
-            }">${`https://www.youtube.com/watch?v=${item.youtubeId}`}</a></p>
-          </div>
+              <h2>Table of Contents:</h2>
+              <ol>
       `;
-    });
 
-    // Close HTML
-    html += `</body></html>`;
-    return html;
+      data.forEach((item) => {
+        html += `<li>${item.title}</li>`;
+      });
+
+      html += `</ol>`;
+
+      data.forEach((item) => {
+        html += `
+            <div class="page-break"></div>
+            <div class="header">${item.title}</div>
+            <div class="content">
+              <h3>Summary:</h3>
+              <p class="summary">${item.YoutubeVideoSummary.summary}</p>
+              <p>URL: <a href="https://www.youtube.com/watch?v=${
+                item.youtubeId
+              }">${`https://www.youtube.com/watch?v=${item.youtubeId}`}</a></p>
+            </div>
+        `;
+      });
+
+      html += `</body></html>`;
+      return html;
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   async createPdf(data: PdfGeneratorYoutubeVideo[]): Promise<Buffer> {
@@ -84,10 +94,7 @@ export class PdfGeneratorProcessor {
       const buffer = await this.createBufferFromHtml(html, options);
       return buffer;
     } catch (error) {
-      this.logger.error(
-        `PDF_GENERATOR_WORKER: Failed to create PDF: error: ${error.message}`,
-      );
-      throw error;
+      this.handleError(error);
     }
   }
 
@@ -95,15 +102,19 @@ export class PdfGeneratorProcessor {
     html: string,
     options: pdf.CreateOptions,
   ): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      pdf.create(html, options).toBuffer((err, buffer) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(buffer);
-        }
+    try {
+      return new Promise((resolve, reject) => {
+        pdf.create(html, options).toBuffer((err, buffer) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(buffer);
+          }
+        });
       });
-    });
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   async uploadPdf(fileId: string, pdf: Buffer): Promise<void> {
@@ -114,25 +125,27 @@ export class PdfGeneratorProcessor {
         file: pdf,
       });
     } catch (error) {
-      this.logger.error(
-        `PDF_GENERATOR_WORKER: Failed to upload pdf to Supabase: fileId: ${fileId}, error: ${error.message}`,
-      );
-      throw error;
+      this.handleError(error);
     }
   }
 
   async queueEmailSend(userId: string, brieferPdfReportId: string) {
-    const sendEmail = await this.emailSenderQueue.add('sendEmail', {
-      userId,
-      brieferPdfReportId,
-    });
-    this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: sendEmail });
+    try {
+      const sendEmail = await this.emailSenderQueue.add('sendEmail', {
+        userId,
+        brieferPdfReportId,
+      });
+      this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: sendEmail });
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   @Process('generatePdf')
   async handlePdfGeneration(job: Job<PdfGeneratorDto>) {
-    this.logger.debug('Starting generating pdf...');
-    this.logger.debug(job.data);
+    this.logger.debug('PDF_GENERATOR_WORKER: Starting generating pdf...');
+    this.logger.debug({ PDF_GENERATOR_WORKER: { data: job.data } });
+
     const { userId, briefingOrderId } = job.data;
 
     const userBriefingOrder =
@@ -181,6 +194,6 @@ export class PdfGeneratorProcessor {
       });
 
     await this.queueEmailSend(userId, brieferPdfReport.id);
-    this.logger.debug('Pdf generated');
+    this.logger.debug('PDF_GENERATOR_WORKER: Pdf generated');
   }
 }

@@ -7,6 +7,17 @@ import { PrismaException } from '../../exceptions/prisma.exceptions';
 export class UserBriefingOrderService {
   constructor(private prisma: PrismaService) {}
   private readonly logger = new Logger(UserBriefingOrderService.name);
+  private handleError(error: any, data: any, entity: string, action: string) {
+    const prismaException = new PrismaException(
+      JSON.stringify(data),
+      error.message,
+      entity,
+      action,
+    );
+
+    this.logger.error(prismaException);
+    throw prismaException;
+  }
 
   async createUserBriefingOrder(data: Prisma.UserBriefingOrderCreateInput) {
     try {
@@ -14,15 +25,7 @@ export class UserBriefingOrderService {
         data,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(data),
-        error.message,
-        'userBriefingOrder',
-        'create',
-      );
-
-      this.logger.error(prismaException);
-      throw prismaException;
+      this.handleError(error, data, 'userBriefingOrder', 'create');
     }
   }
 
@@ -36,14 +39,12 @@ export class UserBriefingOrderService {
         select: selectFieldsInput,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(userBriefingOrderWhereUniqueInput),
-        error.message,
+      this.handleError(
+        error,
+        userBriefingOrderWhereUniqueInput,
         'userBriefingOrder',
         'get',
       );
-      this.logger.error(prismaException);
-      throw prismaException;
     }
   }
 
@@ -57,14 +58,12 @@ export class UserBriefingOrderService {
         where: userBriefingOrderWhereUniqueInput,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(userBriefingOrderWhereUniqueInput),
-        error.message,
+      this.handleError(
+        error,
+        userBriefingOrderWhereUniqueInput,
         'userBriefingOrder',
         'update',
       );
-      this.logger.error(prismaException);
-      throw prismaException;
     }
   }
 }

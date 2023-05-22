@@ -8,6 +8,7 @@ import { StorageConfig } from 'src/common/configs/config.interface';
 import { AudioToTextDto } from './dto/audioToText.dto';
 import { YoutubeTextLinkService } from 'src/common/prisma-related/youtube-related/YoutubeTextLink/youtube-text-link.service';
 import { YoutubeVideoService } from 'src/common/prisma-related/youtube-related/YoutubeVideo/youtube-video.service';
+import { AudioToTextException } from './exceptions/audio-to-text.exceptions';
 
 @Processor('audio-to-text')
 export class AudioToTextProcessor {
@@ -38,6 +39,12 @@ export class AudioToTextProcessor {
       this.configService.get<StorageConfig>('storage').audioFormat;
   }
 
+  private handleError(error: any): void {
+    const audioTextException = new AudioToTextException(error.message);
+    this.logger.error(audioTextException);
+    throw error;
+  }
+
   async downloadAudioFile(fileId: string) {
     try {
       const data = await this.supabaseService.downloadFile({
@@ -47,10 +54,7 @@ export class AudioToTextProcessor {
       });
       return data;
     } catch (error) {
-      this.logger.error(
-        `AUDIO_TO_TEXT_WORKER: Error downloading audio file: fileId: ${fileId}, error: ${error.message}`,
-      );
-      throw error;
+      this.handleError(error);
     }
   }
 
@@ -61,10 +65,7 @@ export class AudioToTextProcessor {
         `${fileId}${this.storageAudioFormat}`,
       );
     } catch (error) {
-      this.logger.error(
-        `AUDIO_TO_TEXT_WORKER: Failed to transcribe file: fileId: ${fileId}, error: ${error.message}`,
-      );
-      throw error;
+      this.handleError(error);
     }
   }
 
@@ -77,10 +78,7 @@ export class AudioToTextProcessor {
         file: textBuffer,
       });
     } catch (error) {
-      this.logger.error(
-        `AUDIO_TO_TEXT_WORKER: Failed to upload transcription to Supabase: fileId: ${fileId}, error: ${error.message}`,
-      );
-      throw error;
+      this.handleError(error);
     }
   }
 
@@ -89,18 +87,23 @@ export class AudioToTextProcessor {
     fileId: string,
     briefingOrderId: string,
   ) {
-    const summaryJob = await this.summariserQueue.add('summarise', {
-      userId,
-      fileId,
-      briefingOrderId,
-    });
-    this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: summaryJob });
+    try {
+      const summaryJob = await this.summariserQueue.add('summarise', {
+        userId,
+        fileId,
+        briefingOrderId,
+      });
+      this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: summaryJob });
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   @Process('transcribe')
   async handleAudioToText(job: Job<AudioToTextDto>): Promise<void> {
-    this.logger.debug('Start extracting audio...');
-    this.logger.debug(job.data);
+    this.logger.debug('AUDIO_TO_TEXT_WORKER: Start extracting audio...');
+    this.logger.debug({ AUDIO_TO_TEXT_WORKER: { data: job.data } });
+
     const { userId, fileId, briefingOrderId } = job.data;
 
     const videoData = await this.youtubeVideoService.getYoutubeVideo(
@@ -118,7 +121,7 @@ export class AudioToTextProcessor {
     );
 
     if (videoData?.YoutubeTextLink?.textUrl) {
-      this.logger.debug('Video text link exists');
+      this.logger.debug('AUDIO_TO_TEXT_WORKER: Video text link exists');
     } else {
       const data = await this.downloadAudioFile(fileId);
       const textData = await this.transcribeAudioFile(data, fileId);
@@ -135,7 +138,7 @@ export class AudioToTextProcessor {
       });
     }
     await this.queueTextSummary(userId, fileId, briefingOrderId);
-    this.logger.debug('Audio download completed');
+    this.logger.debug('AUDIO_TO_TEXT_WORKER: Audio download completed');
     return;
   }
 }

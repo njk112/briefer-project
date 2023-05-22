@@ -7,6 +7,17 @@ import { PrismaException } from '../../exceptions/prisma.exceptions';
 export class YoutubeTextLinkService {
   constructor(private prisma: PrismaService) {}
   private readonly logger = new Logger(YoutubeTextLinkService.name);
+  private handleError(error: any, data: any, entity: string, action: string) {
+    const prismaException = new PrismaException(
+      JSON.stringify(data),
+      error.message,
+      entity,
+      action,
+    );
+
+    this.logger.error(prismaException);
+    throw prismaException;
+  }
 
   async createYoutubeTextLink(data: Prisma.YoutubeTextLinkCreateInput) {
     try {
@@ -14,15 +25,7 @@ export class YoutubeTextLinkService {
         data,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(data),
-        error.message,
-        'youtubeTextLink',
-        'create',
-      );
-
-      this.logger.error(prismaException);
-      throw prismaException;
+      this.handleError(error, data, 'youtubeTextLink', 'create');
     }
   }
 }

@@ -11,6 +11,7 @@ import { SupabaseService } from 'src/common/supabase/supabase.service';
 import { EmailSendDto } from './dto/emailSendDto';
 import { BrieferPdfReportService } from 'src/common/prisma-related/BrieferPdfReport/briefer-pdf-report.service';
 import { UserService } from 'src/common/prisma-related/user-related/User/user.service';
+import { EmailSenderException } from './exceptions/email-sender.exceptions';
 @Processor('email-sender')
 export class EmailSenderProcessor {
   private storageBucket: string;
@@ -41,6 +42,12 @@ export class EmailSenderProcessor {
   }
   private readonly logger = new Logger(EmailSenderProcessor.name);
 
+  private handleError(error: any): void {
+    const emailSenderException = new EmailSenderException(error.message);
+    this.logger.error(emailSenderException);
+    throw error;
+  }
+
   async downloadPdfFile(fileName: string) {
     try {
       const data = await this.supabaseService.downloadFile({
@@ -50,17 +57,15 @@ export class EmailSenderProcessor {
       });
       return data;
     } catch (error) {
-      this.logger.error(
-        `SEND_EMAIL_WORKER: Error downloading pdf file: fileId: ${fileName}, error: ${error.message}`,
-      );
-      throw error;
+      this.handleError(error);
     }
   }
 
   @Process('sendEmail')
   async sendEmail(job: Job<EmailSendDto>) {
-    this.logger.debug('Starting sending email...');
-    this.logger.debug(job.data);
+    this.logger.debug('EMAIL_SENDER_WORKER: Starting sending email...');
+    this.logger.debug({ EMAIL_SENDER_WORKER: { data: job.data } });
+
     const { brieferPdfReportId, userId } = job.data;
 
     const pdfReport = await this.brieferPdfReportService.getBrieferPdfReport({
@@ -68,7 +73,7 @@ export class EmailSenderProcessor {
     });
 
     if (pdfReport?.isSent) {
-      this.logger.debug('Report has been already sent');
+      this.logger.debug('EMAIL_SENDER_WORKER: Report has been already sent');
     } else {
       const pdfFile = await this.downloadPdfFile(pdfReport.fileName);
       const arrayBuffer = await new Response(pdfFile).arrayBuffer();
@@ -94,7 +99,7 @@ export class EmailSenderProcessor {
           { isSent: true },
         );
       }
-      this.logger.debug('Email sent');
+      this.logger.debug('EMAIL_SENDER_WORKER: Email sent');
     }
   }
 }

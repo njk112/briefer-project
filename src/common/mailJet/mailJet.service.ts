@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Client } from 'node-mailjet';
 import { MailJetConfig } from '../configs/config.interface';
 import { SendEmailDto } from './dtos/sendMail.dto';
+import { MailJetException } from './exceptions/mailJet.exceptions';
 
 @Injectable()
 export class MailjetService {
@@ -14,6 +15,12 @@ export class MailjetService {
       this.configService.get<MailJetConfig>('mailJet').apiKey,
       this.configService.get<MailJetConfig>('mailJet').apiSecret,
     );
+  }
+
+  private handleError(error: any) {
+    const mailJetError = new MailJetException(error.message);
+    this.logger.error(mailJetError);
+    throw error;
   }
 
   async sendEmail(emailDetails: SendEmailDto): Promise<boolean> {
@@ -41,19 +48,7 @@ export class MailjetService {
       );
       return true;
     } catch (error) {
-      const emailDetailsForLogging = { ...emailDetails, buffer: undefined };
-
-      this.logger.error(
-        `MAILJET_SERVICE: Failed to send email: emailDetails: ${JSON.stringify(
-          emailDetailsForLogging,
-        )}, error: ${error.message}`,
-      );
-      if (error.statusCode) {
-        this.logger.error(
-          `MAILJET_SERVICE: Error status code: ${error.statusCode}`,
-        );
-      }
-      throw error;
+      this.handleError(error);
     }
   }
 }

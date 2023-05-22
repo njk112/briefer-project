@@ -7,6 +7,17 @@ import { PrismaException } from '../../exceptions/prisma.exceptions';
 export class UserService {
   constructor(private prisma: PrismaService) {}
   private readonly logger = new Logger(UserService.name);
+  private handleError(error: any, data: any, entity: string, action: string) {
+    const prismaException = new PrismaException(
+      JSON.stringify(data),
+      error.message,
+      entity,
+      action,
+    );
+
+    this.logger.error(prismaException);
+    throw prismaException;
+  }
 
   async createUser(data: Prisma.UserCreateInput) {
     try {
@@ -14,15 +25,7 @@ export class UserService {
         data,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(data),
-        error.message,
-        'user',
-        'create',
-      );
-
-      this.logger.error(prismaException);
-      throw prismaException;
+      this.handleError(error, data, 'user', 'create');
     }
   }
 
@@ -32,14 +35,7 @@ export class UserService {
         where: userWhereUniqueInput,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(userWhereUniqueInput),
-        error.message,
-        'user',
-        'get',
-      );
-      this.logger.error(prismaException);
-      throw prismaException;
+      this.handleError(error, userWhereUniqueInput, 'user', 'get');
     }
   }
 }

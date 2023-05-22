@@ -4,6 +4,7 @@ import { DownloadFileDto } from './dtos/downloadFile.dto';
 import { UploadFileDto } from './dtos/uploadFile.dto';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseConfig } from '../configs/config.interface';
+import { SupabaseException } from './exceptions/supabase.exceptions';
 
 @Injectable()
 export class SupabaseService {
@@ -17,23 +18,35 @@ export class SupabaseService {
     );
   }
 
+  private handleError(
+    error: any,
+    jobFunction: string,
+    fileId: string,
+    bucket: string,
+    path: string,
+  ) {
+    const supabaseException = new SupabaseException(
+      error.message,
+      jobFunction,
+      fileId,
+      bucket,
+      path,
+    );
+    this.logger.error(supabaseException);
+    throw error;
+  }
+
   async getBucketFiles(bucket: string, folder: string) {
     try {
       const { data, error } = await this.supabase.storage
         .from(bucket)
         .list(folder, { limit: 100 });
       if (error) {
-        this.logger.error(
-          `SUPABASE_SERVICE: Error getting bucket files: bucket: ${bucket}, folder: ${folder}, error: ${error.message}`,
-        );
-        throw error;
+        this.handleError(error, 'getBucketFiles', '', bucket, folder);
       }
       return data;
     } catch (error) {
-      this.logger.error(
-        `SUPABASE_SERVICE: Error getting bucket files: bucket: ${bucket}, folder: ${folder}, error: ${error.message}`,
-      );
-      throw error;
+      this.handleError(error, 'getBucketFiles', '', bucket, folder);
     }
   }
 
@@ -43,17 +56,23 @@ export class SupabaseService {
         .from(downloadFileDto.bucket)
         .download(`${downloadFileDto.path}/${downloadFileDto.fileName}`);
       if (error) {
-        this.logger.error(
-          `SUPABASE_SERVICE: Failed to download file: bucket: ${downloadFileDto.bucket}, path: ${downloadFileDto.path}, fileName: ${downloadFileDto.fileName}, error: ${error.message}`,
+        this.handleError(
+          error,
+          'downloadFile',
+          downloadFileDto.fileName,
+          downloadFileDto.bucket,
+          downloadFileDto.path,
         );
-        throw error;
       }
       return data;
     } catch (error) {
-      this.logger.error(
-        `SUPABASE_SERVICE: Error downloading file: bucket: ${downloadFileDto.bucket}, path: ${downloadFileDto.path}, fileName: ${downloadFileDto.fileName}, error: ${error.message}`,
+      this.handleError(
+        error,
+        'downloadFile',
+        downloadFileDto.fileName,
+        downloadFileDto.bucket,
+        downloadFileDto.path,
       );
-      throw error;
     }
   }
 
@@ -63,15 +82,22 @@ export class SupabaseService {
         .from(uploadFileDto.bucket)
         .upload(uploadFileDto.path, uploadFileDto.file);
       if (error) {
-        this.logger.error(
-          `SUPABASE_SERVICE: Failed to upload file: bucket: ${uploadFileDto.bucket}, path: ${uploadFileDto.path}, error: ${error.message}`,
+        this.handleError(
+          error,
+          'uploadFile',
+          undefined,
+          uploadFileDto.bucket,
+          uploadFileDto.path,
         );
-        throw error;
       }
       return data;
     } catch (error) {
-      this.logger.error(
-        `SUPABASE_SERVICE: Error uploading file: bucket: ${uploadFileDto.bucket}, path: ${uploadFileDto.path}, error: ${error.message}`,
+      this.handleError(
+        error,
+        'uploadFile',
+        undefined,
+        uploadFileDto.bucket,
+        uploadFileDto.path,
       );
       throw error;
     }

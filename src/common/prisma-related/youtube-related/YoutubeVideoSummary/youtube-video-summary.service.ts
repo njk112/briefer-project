@@ -7,6 +7,17 @@ import { PrismaException } from '../../exceptions/prisma.exceptions';
 export class YoutubeVideoSummaryService {
   constructor(private prisma: PrismaService) {}
   private readonly logger = new Logger(YoutubeVideoSummaryService.name);
+  private handleError(error: any, data: any, entity: string, action: string) {
+    const prismaException = new PrismaException(
+      JSON.stringify(data),
+      error.message,
+      entity,
+      action,
+    );
+
+    this.logger.error(prismaException);
+    throw prismaException;
+  }
 
   async createYoutubeVideoSummary(data: Prisma.YoutubeVideoSummaryCreateInput) {
     try {
@@ -14,15 +25,7 @@ export class YoutubeVideoSummaryService {
         data,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(data),
-        error.message,
-        'youtubeVideoSummary',
-        'create',
-      );
-
-      this.logger.error(prismaException);
-      throw prismaException;
+      this.handleError(error, data, 'youtubeVideoSummary', 'create');
     }
   }
 
@@ -34,14 +37,12 @@ export class YoutubeVideoSummaryService {
         where: youtubeVideoSummaryWhereUniqueInput,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(youtubeVideoSummaryWhereUniqueInput),
-        error.message,
+      this.handleError(
+        error,
+        youtubeVideoSummaryWhereUniqueInput,
         'youtubeVideoSummary',
         'get',
       );
-      this.logger.error(prismaException);
-      throw prismaException;
     }
   }
 }

@@ -7,6 +7,17 @@ import { PrismaException } from '../exceptions/prisma.exceptions';
 export class BrieferPdfReportService {
   constructor(private prisma: PrismaService) {}
   private readonly logger = new Logger(BrieferPdfReportService.name);
+  private handleError(error: any, data: any, entity: string, action: string) {
+    const prismaException = new PrismaException(
+      JSON.stringify(data),
+      error.message,
+      entity,
+      action,
+    );
+
+    this.logger.error(prismaException);
+    throw prismaException;
+  }
 
   async createBrieferPdfReport(data: Prisma.BrieferPdfReportCreateInput) {
     try {
@@ -14,15 +25,7 @@ export class BrieferPdfReportService {
         data,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(data),
-        error.message,
-        'brieferPdfReport',
-        'create',
-      );
-
-      this.logger.error(prismaException);
-      throw prismaException;
+      this.handleError(error, data, 'brieferPdfReport', 'create');
     }
   }
 
@@ -34,14 +37,12 @@ export class BrieferPdfReportService {
         where: brieferPdfReportWhereUniqueInput,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(brieferPdfReportWhereUniqueInput),
-        error.message,
+      this.handleError(
+        error,
+        brieferPdfReportWhereUniqueInput,
         'brieferPdfReport',
         'get',
       );
-      this.logger.error(prismaException);
-      throw prismaException;
     }
   }
 
@@ -55,14 +56,7 @@ export class BrieferPdfReportService {
         where,
       });
     } catch (error) {
-      const prismaException = new PrismaException(
-        JSON.stringify(where),
-        error.message,
-        'brieferPdfReport',
-        'update',
-      );
-      this.logger.error(prismaException);
-      throw prismaException;
+      this.handleError(error, where, 'brieferPdfReport', 'update');
     }
   }
 }

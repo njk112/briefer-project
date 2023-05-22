@@ -12,6 +12,7 @@ import { TextSummariserDto } from './dto/textSummariser.dto';
 import { YoutubeVideoSummaryService } from 'src/common/prisma-related/youtube-related/YoutubeVideoSummary/youtube-video-summary.service';
 import { YoutubeVideoService } from 'src/common/prisma-related/youtube-related/YoutubeVideo/youtube-video.service';
 import { UserBriefingOrderService } from 'src/common/prisma-related/user-related/UserBriefingOrder/user-briefing-order.service';
+import { TextSummariserException } from './exceptions/text-summariser.exceptions';
 
 @Injectable()
 @Processor('text-summariser')
@@ -44,6 +45,12 @@ export class TextSummariserProcessor {
       this.configService.get<OpenAiConfig>('openAi').whisperFinalPrompt;
   }
 
+  private handleError(error: any): void {
+    const textSummaryException = new TextSummariserException(error.message);
+    this.logger.error(textSummaryException);
+    throw error;
+  }
+
   async downloadTextFile(fileId: string) {
     try {
       const data = await this.supabaseService.downloadFile({
@@ -53,63 +60,72 @@ export class TextSummariserProcessor {
       });
       return data;
     } catch (error) {
-      this.logger.error(
-        `TEXT_SUMMARISER_WORKER: Error downloading text file: fileId: ${fileId}, error: ${error.message}`,
-      );
-      throw error;
+      this.handleError(error);
     }
   }
 
   processText(textData: string, gptTokenLimit: number = this.openAiTokenLimit) {
-    const tokenCount = this.openAiService.getTokenCount(textData);
-    const chunksNeeded = Math.ceil(tokenCount / gptTokenLimit);
-    return this.chunkText(textData, gptTokenLimit, chunksNeeded);
+    try {
+      const tokenCount = this.openAiService.getTokenCount(textData);
+      const chunksNeeded = Math.ceil(tokenCount / gptTokenLimit);
+      return this.chunkText(textData, gptTokenLimit, chunksNeeded);
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   chunkText(text: string, chunkSize: number, chunksNeeded: number) {
-    const chunks = [];
-    let start = 0;
-    let iteration = 0;
-    while (start < text.length && iteration < chunksNeeded) {
-      let end = start + chunkSize;
-      if (end < text.length) {
-        while ('!.?'.indexOf(text[end]) === -1 && end > start) {
-          end--;
+    try {
+      const chunks = [];
+      let start = 0;
+      let iteration = 0;
+      while (start < text.length && iteration < chunksNeeded) {
+        let end = start + chunkSize;
+        if (end < text.length) {
+          while ('!.?'.indexOf(text[end]) === -1 && end > start) {
+            end--;
+          }
+          if (end === start) {
+            end = start + chunkSize;
+          } else {
+            end++;
+          }
         }
-        if (end === start) {
-          end = start + chunkSize;
-        } else {
-          end++;
-        }
+        chunks.push({
+          role: 'user',
+          content: `Text part ${iteration}: ${text.slice(start, end)}`,
+        });
+        iteration++;
+        start = end;
       }
-      chunks.push({
+      const finalPrompt = {
         role: 'user',
-        content: `Text part ${iteration}: ${text.slice(start, end)}`,
-      });
-      iteration++;
-      start = end;
-    }
-    const finalPrompt = {
-      role: 'user',
-      content: this.whisperFinalPromt,
-    };
-    chunks.push(finalPrompt);
+        content: this.whisperFinalPromt,
+      };
+      chunks.push(finalPrompt);
 
-    return chunks;
+      return chunks;
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   async queuePdfGeneration(userId: string, briefingOrderId: string) {
-    const pdfGeneration = await this.pdfGeneratorQueue.add('generatePdf', {
-      userId,
-      briefingOrderId,
-    });
-    this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: pdfGeneration });
+    try {
+      const pdfGeneration = await this.pdfGeneratorQueue.add('generatePdf', {
+        userId,
+        briefingOrderId,
+      });
+      this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: pdfGeneration });
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   @Process('summarise')
   async handleSummarisation(job: Job<TextSummariserDto>): Promise<void> {
-    this.logger.debug('Starting summarising text...');
-    this.logger.debug(job.data);
+    this.logger.debug('TEXT_SUMMARISER_WORKER: Starting summarising text...');
+    this.logger.debug({ TEXT_SUMMARISER_WORKER: { data: job.data } });
     const { userId, fileId, briefingOrderId } = job.data;
 
     const videoData = await this.youtubeVideoService.getYoutubeVideo(
@@ -127,7 +143,7 @@ export class TextSummariserProcessor {
     );
 
     if (videoData?.YoutubeVideoSummary?.summary) {
-      this.logger.debug('Video summary exists');
+      this.logger.debug('TEXT_SUMMARISER_WORKER: Video summary exists');
     } else {
       const textBlob = await this.downloadTextFile(fileId);
       const textData = await textBlob.text();
@@ -161,11 +177,12 @@ export class TextSummariserProcessor {
       briefingOrderCount.totalVideos === briefingOrderCount.videosProccessed
     ) {
       await this.queuePdfGeneration(userId, briefingOrderId);
-      this.logger.debug('PDF generation queued');
     } else {
-      this.logger.debug('More jobs have to be processed before pdf generation');
+      this.logger.debug(
+        'TEXT_SUMMARISER_WORKER: More jobs have to be processed before pdf generation',
+      );
     }
 
-    this.logger.debug('Text summarisation completed');
+    this.logger.debug('TEXT_SUMMARISER_WORKER: Text summarisation completed');
   }
 }
