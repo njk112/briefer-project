@@ -5,6 +5,9 @@
   "author": "NJK",
   "private": true,
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -41,7 +44,8 @@
     "nestjs-prisma": "^0.20.0",
     "node-mailjet": "^6.0.2",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.2.0"
+    "rxjs": "^7.2.0",
+    "ytdl-core": "^4.11.4"
   },
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "^10.1.0",

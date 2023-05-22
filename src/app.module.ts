@@ -5,7 +5,6 @@ import { PrismaModule, loggingMiddleware } from 'nestjs-prisma';
 
 import config from './common/configs/config';
 import { BullModule } from '@nestjs/bull';
-import { Redis } from 'ioredis';
 import { RedisConfig } from './common/configs/config.interface';
 
 @Module({
@@ -25,9 +24,7 @@ import { RedisConfig } from './common/configs/config.interface';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        redis: new Redis(
-          configService.get<RedisConfig>('redis').redisUrl,
-        ) as any,
+        redis: configService.get<RedisConfig>('redis').redisUrl,
       }),
       inject: [ConfigService],
     }),
