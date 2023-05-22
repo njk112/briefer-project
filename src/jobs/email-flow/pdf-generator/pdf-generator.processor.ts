@@ -72,6 +72,7 @@ export class PdfGeneratorProcessor {
             <div class="content">
               <h3>Summary:</h3>
               <p class="summary">${item.YoutubeVideoSummary.summary}</p>
+              <p>Author ${item.videoAuthor}</p>
               <p>URL: <a href="https://www.youtube.com/watch?v=${
                 item.youtubeId
               }">${`https://www.youtube.com/watch?v=${item.youtubeId}`}</a></p>

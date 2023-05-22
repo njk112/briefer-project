@@ -36,7 +36,7 @@ model YoutubeVideo {
   youtubeId           String               @unique
   title               String
   videoAuthor         String
-  timesAccessed       Int                  @default(0)
+  timesAccessed       Int                  @default(1)
   dateCreated         DateTime             @default(now())
   UserBriefingOrder   UserBriefingOrder    @relation(fields: [userBriefingOrderId], references: [id])
   userBriefingOrderId String

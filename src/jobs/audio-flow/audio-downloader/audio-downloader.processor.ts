@@ -122,6 +122,16 @@ export class AudioDownloaderProcessor {
     );
     if (video?.YoutubeAudioLink?.audioUrl) {
       this.logger.debug({ AUDIO_DOWNLOADER_WORKER: 'Video link exists' });
+      await this.youtubeVideoService.updateYoutubeVideo(
+        {
+          id: video.id,
+        },
+        {
+          timesAccessed: {
+            increment: 1,
+          },
+        },
+      );
       await this.userBriefingOrderService.updateUserBriefingOrder(
         {
           id: briefingOrderId,
@@ -144,6 +154,7 @@ export class AudioDownloaderProcessor {
           },
         },
         title: videoInfo.videoDetails.title,
+        videoAuthor: videoInfo.videoDetails.author.name,
       });
 
       const audioBufferArray = await this.downloadAudioFromUrl(audioUrl);

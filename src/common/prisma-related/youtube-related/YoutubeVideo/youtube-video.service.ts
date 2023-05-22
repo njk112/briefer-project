@@ -29,6 +29,20 @@ export class YoutubeVideoService {
     }
   }
 
+  async updateYoutubeVideo(
+    where: Prisma.YoutubeVideoWhereUniqueInput,
+    data: Prisma.YoutubeVideoUpdateInput,
+  ) {
+    try {
+      return this.prisma.youtubeVideo.update({
+        data,
+        where,
+      });
+    } catch (error) {
+      this.handleError(error, where, 'youtubeVideo', 'update');
+    }
+  }
+
   async getYoutubeVideo(
     youtubeVideoWhereUniqueInput: Prisma.YoutubeVideoWhereUniqueInput,
     selectFieldsInput?: Prisma.YoutubeVideoSelect,
