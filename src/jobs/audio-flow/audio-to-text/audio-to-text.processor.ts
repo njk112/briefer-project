@@ -1,12 +1,12 @@
-import { Process, Processor } from '@nestjs/bull';
-import { Logger, Injectable } from '@nestjs/common';
-import { Job } from 'bull';
+import { InjectQueue, Process, Processor } from '@nestjs/bull';
+import { Logger } from '@nestjs/common';
+import { Job, Queue } from 'bull';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'nestjs-prisma';
 import { OpenAiService } from 'src/common/openAi/openAi.service';
 import { SupabaseService } from 'src/common/supabase/supabase.service';
-import { TranscribeJobDto } from 'src/youtube/dto/queue-jobs.dto';
 import { StorageConfig } from 'src/common/configs/config.interface';
+import { AudioToTextDto } from './dto/audioToText.dto';
 
 @Processor('audio-to-text')
 export class AudioToTextProcessor {
@@ -21,6 +21,8 @@ export class AudioToTextProcessor {
     private prismaService: PrismaService,
     private openAiService: OpenAiService,
     private configService: ConfigService,
+
+    @InjectQueue('text-summariser') private summariserQueue: Queue,
   ) {
     this.storageBucket =
       this.configService.get<StorageConfig>('storage').bucket;
@@ -36,17 +38,11 @@ export class AudioToTextProcessor {
 
   async downloadAudioFile(fileId: string) {
     try {
-      const { data, error } = await this.supabaseService.downloadFile({
+      const data = await this.supabaseService.downloadFile({
         bucket: this.storageBucket,
         path: this.storageAudioPath,
         fileName: `${fileId}${this.storageAudioFormat}`,
       });
-      if (error) {
-        this.logger.error(
-          `AUDIO_TO_TEXT_WORKER: Failed to download file: fileId: ${fileId}, error: ${error.message}`,
-        );
-        throw error;
-      }
       return data;
     } catch (error) {
       this.logger.error(
@@ -86,17 +82,17 @@ export class AudioToTextProcessor {
     }
   }
 
-  async uploadToPrisma(textUrl: string, youtubeId: string): Promise<void> {
+  async uploadToPrisma(
+    textUrl: string,
+    youtubeId: string,
+    youtubeVideoId: string,
+  ): Promise<void> {
     try {
       await this.prismaService.youtubeTextLink.create({
         data: {
           textUrl,
           youtubeId,
-          youtubeAudioLink: {
-            connect: {
-              youtubeId,
-            },
-          },
+          youtubeVideoId,
         },
       });
     } catch (error) {
@@ -107,19 +103,62 @@ export class AudioToTextProcessor {
     }
   }
 
+  async getVideoData(youtubeId: string) {
+    try {
+      const video = await this.prismaService.youtubeVideo.findUnique({
+        where: {
+          youtubeId,
+        },
+        select: {
+          id: true,
+          YoutubeTextLink: {
+            select: {
+              textUrl: true,
+            },
+          },
+        },
+      });
+      return video;
+    } catch (error) {
+      throw { PRISMA_ERROR: { youtubeId, error } };
+    }
+  }
+
+  async queueTextSummary(
+    userId: string,
+    fileId: string,
+    briefingOrderId: string,
+  ) {
+    const summaryJob = await this.summariserQueue.add('summarise', {
+      userId,
+      fileId,
+      briefingOrderId,
+    });
+    this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: summaryJob });
+  }
+
   @Process('transcribe')
-  async handleAudioToText(job: Job<TranscribeJobDto>): Promise<void> {
+  async handleAudioToText(job: Job<AudioToTextDto>): Promise<void> {
     this.logger.debug('Start extracting audio...');
     this.logger.debug(job.data);
-    const { userId, fileId } = job.data;
+    const { userId, fileId, briefingOrderId } = job.data;
 
-    const data = await this.downloadAudioFile(fileId);
-    const textData = await this.transcribeAudioFile(data, fileId);
-    await this.uploadTranscription(fileId, textData.text);
-    await this.uploadToPrisma(
-      `${this.storageBucket}/${this.storageTextPath}/${fileId}${this.storageTextFormat}`,
-      fileId,
-    );
+    const videoData = await this.getVideoData(fileId);
+
+    if (videoData?.YoutubeTextLink?.textUrl) {
+      this.logger.debug('Video text link exists');
+    } else {
+      const data = await this.downloadAudioFile(fileId);
+      const textData = await this.transcribeAudioFile(data, fileId);
+      await this.uploadTranscription(fileId, textData.text);
+      await this.uploadToPrisma(
+        `${this.storageBucket}/${this.storageTextPath}/${fileId}${this.storageTextFormat}`,
+        fileId,
+        videoData.id,
+      );
+    }
+    await this.queueTextSummary(userId, fileId, briefingOrderId);
     this.logger.debug('Audio download completed');
+    return;
   }
 }

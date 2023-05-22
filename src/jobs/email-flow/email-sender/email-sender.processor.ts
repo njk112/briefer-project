@@ -9,7 +9,7 @@ import {
 } from 'src/common/configs/config.interface';
 import { MailjetService } from 'src/common/mailJet/mailJet.service';
 import { SupabaseService } from 'src/common/supabase/supabase.service';
-import { SendEmailDto } from 'src/youtube/dto/queue-jobs.dto';
+import { EmailSendDto } from './dto/emailSendDto';
 @Processor('email-sender')
 export class EmailSenderProcessor {
   private storageBucket: string;
@@ -39,62 +39,95 @@ export class EmailSenderProcessor {
   }
   private readonly logger = new Logger(EmailSenderProcessor.name);
 
-  async downloadPdfFile(fileId: string) {
+  async downloadPdfFile(fileName: string) {
     try {
       const data = await this.supabaseService.downloadFile({
         bucket: this.storageBucket,
         path: this.storagePdfPath,
-        fileName: `${fileId}.pdf`,
+        fileName,
       });
       return data;
     } catch (error) {
       this.logger.error(
-        `SEND_EMAIL_WORKER: Error downloading pdf file: fileId: ${fileId}, error: ${error.message}`,
+        `SEND_EMAIL_WORKER: Error downloading pdf file: fileId: ${fileName}, error: ${error.message}`,
       );
       throw error;
     }
   }
 
-  async updatePrisma(fileId: string) {
+  async updatePrisma(brieferPdfReportId: string) {
     try {
-      await this.prismaService.brieferPdfReports.update({
+      await this.prismaService.brieferPdfReport.update({
         data: {
           isSent: true,
         },
         where: {
-          id: fileId,
+          id: brieferPdfReportId,
         },
       });
     } catch (error) {
-      throw { PRISMA_ERROR: { fileId, error } };
+      throw { PRISMA_ERROR: { brieferPdfReportId, error } };
+    }
+  }
+
+  async getUserEmail(userId: string) {
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: {
+          id: userId,
+        },
+      });
+      return user;
+    } catch (error) {
+      throw { PRISMA_ERROR: { userId, error } };
+    }
+  }
+
+  async getBrieferPdfReport(brieferPdfReportId: string) {
+    try {
+      const pdfReport = await this.prismaService.brieferPdfReport.findUnique({
+        where: {
+          id: brieferPdfReportId,
+        },
+      });
+      return pdfReport;
+    } catch (error) {
+      throw { PRISMA_ERROR: { brieferPdfReportId, error } };
     }
   }
 
   @Process('sendEmail')
-  async sendEmail(job: Job<SendEmailDto>) {
+  async sendEmail(job: Job<EmailSendDto>) {
     this.logger.debug('Starting sending email...');
     this.logger.debug(job.data);
-    const { fileId, userId } = job.data;
-    const pdfFile = await this.downloadPdfFile(fileId);
-    const arrayBuffer = await new Response(pdfFile).arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const { brieferPdfReportId, userId } = job.data;
+    const pdfReport = await this.getBrieferPdfReport(brieferPdfReportId);
 
-    console.log('buffer created');
+    if (pdfReport?.isSent) {
+      this.logger.debug('Report has been already sent');
+    } else {
+      const pdfFile = await this.downloadPdfFile(pdfReport.fileName);
+      const arrayBuffer = await new Response(pdfFile).arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-    const email = {
-      to: 'njkazlauskas@gmail.com',
-      from: this.fromEmail,
-      fromName: this.fromName,
-      subject: this.subject,
-      text: this.text,
-      buffer,
-      fileName: fileId,
-      contentType: this.contentType,
-    };
+      const user = await this.getUserEmail(userId);
 
-    const isSent = await this.mailJetService.sendEmail(email);
-    if (isSent) {
-      await this.updatePrisma(fileId);
+      const email = {
+        to: user.email,
+        from: this.fromEmail,
+        fromName: this.fromName,
+        subject: this.subject,
+        text: `${this.text} for ${pdfReport.fileName}`,
+        buffer,
+        fileName: pdfReport.fileName,
+        contentType: this.contentType,
+      };
+
+      const isSent = await this.mailJetService.sendEmail(email);
+      if (isSent) {
+        await this.updatePrisma(pdfReport.id);
+      }
+      this.logger.debug('Email sent');
     }
   }
 }

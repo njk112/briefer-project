@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { SupabaseModule } from 'src/common/supabase/supabase.module';
 import { AudioToTextProcessor } from './audio-to-text.processor';
 import { OpenAiModule } from 'src/common/openAi/openAi.module';
+import { TextSummariserModule } from '../text-summariser/text-summariser.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { OpenAiModule } from 'src/common/openAi/openAi.module';
     }),
     SupabaseModule,
     OpenAiModule,
+    TextSummariserModule,
   ],
   providers: [AudioToTextProcessor],
   exports: [BullModule],

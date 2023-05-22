@@ -1,15 +1,15 @@
-import { Process, Processor } from '@nestjs/bull';
+import { InjectQueue, Process, Processor } from '@nestjs/bull';
 import { Logger, Injectable } from '@nestjs/common';
-import { Job } from 'bull';
+import { Job, Queue } from 'bull';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'nestjs-prisma';
 import { OpenAiService } from 'src/common/openAi/openAi.service';
 import { SupabaseService } from 'src/common/supabase/supabase.service';
-import { SummaryJobDto } from 'src/youtube/dto/queue-jobs.dto';
 import {
   OpenAiConfig,
   StorageConfig,
 } from 'src/common/configs/config.interface';
+import { TextSummariserDto } from './dto/textSummariser.dto';
 
 @Injectable()
 @Processor('text-summariser')
@@ -25,6 +25,8 @@ export class TextSummariserProcessor {
     private prismaService: PrismaService,
     private openAiService: OpenAiService,
     private configService: ConfigService,
+
+    @InjectQueue('pdf-generator') private pdfGeneratorQueue: Queue,
   ) {
     this.storageBucket =
       this.configService.get<StorageConfig>('storage').bucket;
@@ -40,17 +42,11 @@ export class TextSummariserProcessor {
 
   async downloadTextFile(fileId: string) {
     try {
-      const { data, error } = await this.supabaseService.downloadFile({
+      const data = await this.supabaseService.downloadFile({
         bucket: this.storageBucket,
         path: this.storageTextPath,
         fileName: `${fileId}${this.storageTextFormat}`,
       });
-      if (error) {
-        this.logger.error(
-          `TEXT_SUMMARISER_WORKER: Failed to download file: fileId: ${fileId}, error: ${error.message}`,
-        );
-        throw error;
-      }
       return data;
     } catch (error) {
       this.logger.error(
@@ -60,22 +56,43 @@ export class TextSummariserProcessor {
     }
   }
 
-  async uploadToPrisma(textData: string, fileId: string): Promise<void> {
+  async uploadVideoSummaryToPrisma(
+    textData: string,
+    youtubeId: string,
+    youtubeVideoId: string,
+  ) {
     try {
       await this.prismaService.youtubeVideoSummary.create({
         data: {
           summary: textData,
-          youtubeId: fileId,
-          YoutubeTextLink: {
-            connect: {
-              youtubeId: fileId,
-            },
-          },
+          youtubeId,
+          youtubeVideoId,
         },
       });
     } catch (error) {
       this.logger.error(
-        `TEXT_SUMMARISER_WORKER: Failed to upload to Prisma: textData: ${textData}, fileId: ${fileId}, error: ${error.message}`,
+        `TEXT_SUMMARISER_WORKER: Failed to upload to Prisma: textData: ${textData}, fileId: ${youtubeId}, error: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async updateBriefingOrderProcessedVideos(briefingOrderId: string) {
+    try {
+      const briefingOrder = await this.prismaService.userBriefingOrder.update({
+        where: {
+          id: briefingOrderId,
+        },
+        data: {
+          videosProccessed: {
+            increment: 1,
+          },
+        },
+      });
+      return briefingOrder;
+    } catch (error) {
+      this.logger.error(
+        `TEXT_SUMMARISER_WORKER: Failed to upload to Prisma: briefingOrderId: ${briefingOrderId}, error: ${error.message}`,
       );
       throw error;
     }
@@ -119,19 +136,65 @@ export class TextSummariserProcessor {
     return chunks;
   }
 
+  async getVideoData(youtubeId: string) {
+    try {
+      const video = await this.prismaService.youtubeVideo.findUnique({
+        where: {
+          youtubeId,
+        },
+        select: {
+          id: true,
+          YoutubeVideoSummary: {
+            select: {
+              summary: true,
+            },
+          },
+        },
+      });
+      return video;
+    } catch (error) {
+      throw { PRISMA_ERROR: { youtubeId, error } };
+    }
+  }
+
+  async queuePdfGeneration(userId: string, briefingOrderId: string) {
+    const pdfGeneration = await this.pdfGeneratorQueue.add('generatePdf', {
+      userId,
+      briefingOrderId,
+    });
+    this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: pdfGeneration });
+  }
+
   @Process('summarise')
-  async handleSummarisation(job: Job<SummaryJobDto>): Promise<void> {
+  async handleSummarisation(job: Job<TextSummariserDto>): Promise<void> {
     this.logger.debug('Starting summarising text...');
     this.logger.debug(job.data);
-    const { userId, fileId } = job.data;
+    const { userId, fileId, briefingOrderId } = job.data;
+    const videoData = await this.getVideoData(fileId);
 
-    const textBlob = await this.downloadTextFile(fileId);
-    const textData = await textBlob.text();
+    if (videoData?.YoutubeVideoSummary?.summary) {
+      this.logger.debug('Video summary exists');
+    } else {
+      const textBlob = await this.downloadTextFile(fileId);
+      const textData = await textBlob.text();
 
-    const textChunks = this.processText(textData);
+      const textChunks = this.processText(textData);
 
-    const gptAnswer = await this.openAiService.chatGptToSummary(textChunks);
-    await this.uploadToPrisma(gptAnswer, fileId);
+      const gptAnswer = await this.openAiService.chatGptToSummary(textChunks);
+      await this.uploadVideoSummaryToPrisma(gptAnswer, fileId, videoData.id);
+    }
+    const briefingOrderCount = await this.updateBriefingOrderProcessedVideos(
+      briefingOrderId,
+    );
+
+    if (
+      briefingOrderCount.totalVideos === briefingOrderCount.videosProccessed
+    ) {
+      await this.queuePdfGeneration(userId, briefingOrderId);
+      this.logger.debug('PDF generation queued');
+    } else {
+      this.logger.debug('More jobs have to be processed before pdf generation');
+    }
 
     this.logger.debug('Text summarisation completed');
   }

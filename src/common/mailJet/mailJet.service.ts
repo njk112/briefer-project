@@ -37,13 +37,15 @@ export class MailjetService {
     try {
       const result = await request;
       this.logger.debug(
-        `MAILJET_SERVICE: Email sent successfully. Result: ${result.body}`,
+        `MAILJET_SERVICE: Email sent successfully. Result: ${result.response.status}`,
       );
       return true;
     } catch (error) {
+      const emailDetailsForLogging = { ...emailDetails, buffer: undefined };
+
       this.logger.error(
         `MAILJET_SERVICE: Failed to send email: emailDetails: ${JSON.stringify(
-          emailDetails,
+          emailDetailsForLogging,
         )}, error: ${error.message}`,
       );
       if (error.statusCode) {

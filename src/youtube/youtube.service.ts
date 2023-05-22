@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'nestjs-prisma';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -20,12 +20,49 @@ export class YoutubeService {
     @InjectQueue('email-sender') private emailSenderQueue: Queue,
   ) {}
 
+  private readonly logger = new Logger(YoutubeService.name);
+
+  async createUser(userEmail: string) {
+    this.logger.debug(`Creating user: ${userEmail}`);
+    const user = await this.prisma.user.create({
+      data: {
+        email: userEmail,
+      },
+    });
+    return user;
+  }
+
+  async getUser(userEmail: string) {
+    this.logger.debug(`Getting user: ${userEmail}`);
+    const user = await this.prisma.user.findUnique({
+      where: { email: userEmail },
+    });
+    return user;
+  }
+
+  async createBriefingOrder(userId: string, totalVideos: number) {
+    this.logger.debug(`Creating briefing order: ${userId}`);
+    const briefingOrder = await this.prisma.userBriefingOrder.create({
+      data: {
+        totalVideos,
+        userId: userId,
+      },
+    });
+    return briefingOrder;
+  }
+
   async queueJobs(queueJobs: QueueJobDto) {
-    const { urls, userId } = queueJobs;
+    const { urls, userEmail } = queueJobs;
+
+    let user = await this.getUser(userEmail);
+    if (!user) user = await this.createUser(userEmail);
+    const briefingOrder = await this.createBriefingOrder(user.id, urls.length);
+
     const jobs = urls.map((url) => ({
       name: 'download',
-      data: { url, userId },
+      data: { url, userId: user.id, briefingOrderId: briefingOrder.id },
     }));
+
     const jobsQueue = await this.audioQueue.addBulk(jobs);
 
     return jobsQueue;

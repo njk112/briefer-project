@@ -26,20 +26,24 @@ model UserBriefingOrder {
   userId            String
   totalVideos       Int
   videosProccessed  Int               @default(0)
+  dateCreated       DateTime          @default(now())
   YoutubeVideo      YoutubeVideo[]
   BrieferPdfReports BrieferPdfReport?
 }
 
 model YoutubeVideo {
-  id                  String                @id @default(uuid())
-  youtubeId           String                @unique
-  timesAccessed       Int                   @default(0)
-  UserBriefingOrder   UserBriefingOrder     @relation(fields: [userBriefingOrderId], references: [id])
+  id                  String               @id @default(uuid())
+  youtubeId           String               @unique
+  title               String
+  videoAuthor         String
+  timesAccessed       Int                  @default(0)
+  dateCreated         DateTime             @default(now())
+  UserBriefingOrder   UserBriefingOrder    @relation(fields: [userBriefingOrderId], references: [id])
   userBriefingOrderId String
   YoutubeAudioLink    YoutubeAudioLink?
   YoutubeTextLink     YoutubeTextLink?
-  YoutubeVideoSummary YoutubeVideoSummary[] @relation("VideoSummaries")
-  BrieferPdfReports   BrieferPdfReport[]    @relation("VideoBrieferReports")
+  YoutubeVideoSummary YoutubeVideoSummary?
+  BrieferPdfReports   BrieferPdfReport[]   @relation("VideoBrieferReports")
 }
 
 model YoutubeAudioLink {
@@ -48,6 +52,7 @@ model YoutubeAudioLink {
   youtubeId      String       @unique
   timesAccessed  Int          @default(0)
   YoutubeVideo   YoutubeVideo @relation(fields: [youtubeVideoId], references: [id])
+  dateCreated    DateTime     @default(now())
   youtubeVideoId String       @unique
 }
 
@@ -57,26 +62,28 @@ model YoutubeTextLink {
   timesAccessed  Int          @default(0)
   textUrl        String       @unique
   YoutubeVideo   YoutubeVideo @relation(fields: [youtubeVideoId], references: [id])
+  dateCreated    DateTime     @default(now())
   youtubeVideoId String       @unique
 }
 
 model YoutubeVideoSummary {
-  id                String             @id @default(uuid())
-  youtubeId         String             @unique
-  timesAccessed     Int                @default(0)
-  summary           String
-  YoutubeVideo      YoutubeVideo       @relation("VideoSummaries", fields: [youtubeVideoId], references: [id])
-  youtubeVideoId    String
-  BrieferPdfReports BrieferPdfReport[]
+  id             String       @id @default(uuid())
+  youtubeId      String       @unique
+  timesAccessed  Int          @default(0)
+  summary        String
+  YoutubeVideo   YoutubeVideo @relation(fields: [youtubeVideoId], references: [id])
+  dateCreated    DateTime     @default(now())
+  youtubeVideoId String       @unique
 }
 
 model BrieferPdfReport {
-  id                  String                @id @default(uuid())
-  pdfUrl              String                @unique
-  isSent              Boolean               @default(false)
-  timesAccessed       Int                   @default(0)
-  YoutubeVideo        YoutubeVideo[]        @relation("VideoBrieferReports")
-  videoSummary        YoutubeVideoSummary[]
-  UserBriefingOrder   UserBriefingOrder     @relation(fields: [userBriefingOrderId], references: [id])
-  userBriefingOrderId String                @unique
+  id                  String            @id @default(uuid())
+  pdfUrl              String            @unique
+  fileName            String
+  isSent              Boolean           @default(false)
+  timesAccessed       Int               @default(0)
+  YoutubeVideo        YoutubeVideo[]    @relation("VideoBrieferReports")
+  dateCreated         DateTime          @default(now())
+  UserBriefingOrder   UserBriefingOrder @relation(fields: [userBriefingOrderId], references: [id])
+  userBriefingOrderId String            @unique
 }

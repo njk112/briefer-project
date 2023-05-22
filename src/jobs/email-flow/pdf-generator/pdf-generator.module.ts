@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { SupabaseModule } from 'src/common/supabase/supabase.module';
 import { PdfGeneratorProcessor } from './pdf-generator.processor';
 import { PrismaModule } from 'nestjs-prisma';
+import { EmailSenderModule } from '../email-sender/email-sender.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { PrismaModule } from 'nestjs-prisma';
     }),
     SupabaseModule,
     PrismaModule,
+    EmailSenderModule,
   ],
   providers: [PdfGeneratorProcessor],
   exports: [BullModule],

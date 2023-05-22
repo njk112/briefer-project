@@ -1,13 +1,13 @@
-import { Process, Processor } from '@nestjs/bull';
+import { InjectQueue, Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bull';
+import { Job, Queue } from 'bull';
 import { PrismaService } from 'nestjs-prisma';
 import { SupabaseService } from 'src/common/supabase/supabase.service';
 import * as pdf from 'html-pdf';
 import { ConfigService } from '@nestjs/config';
 import { StorageConfig } from 'src/common/configs/config.interface';
 import { YoutubeVideoSummary } from '@prisma/client';
-import { GeneratePdfDto } from 'src/youtube/dto/queue-jobs.dto';
+import { PdfGeneratorDto } from './dto/pdfGenerator.dto';
 
 @Processor('pdf-generator')
 export class PdfGeneratorProcessor {
@@ -18,6 +18,8 @@ export class PdfGeneratorProcessor {
     private supabaseService: SupabaseService,
     private prismaService: PrismaService,
     private configService: ConfigService,
+
+    @InjectQueue('email-sender') private emailSenderQueue: Queue,
   ) {
     this.storageBucket =
       this.configService.get<StorageConfig>('storage').bucket;
@@ -41,8 +43,14 @@ export class PdfGeneratorProcessor {
     }
   }
 
-  private createHtmlFromData(data: YoutubeVideoSummary[]): string {
-    // Start building HTML string
+  private createHtmlFromData(
+    data: {
+      id: string;
+      youtubeId: string;
+      title: string;
+      YoutubeVideoSummary: YoutubeVideoSummary;
+    }[],
+  ): string {
     let html = `
     <!DOCTYPE html>
     <html>
@@ -62,23 +70,22 @@ export class PdfGeneratorProcessor {
             <ol>
     `;
 
-    // Add links to the table of contents
     data.forEach((item) => {
-      html += `<li>${item.youtubeId}</li>`;
+      html += `<li>${item.title}</li>`;
     });
 
-    // Close list and add footer with date to the title page
     html += `</ol>`;
 
-    // Add each video summary as a new page
     data.forEach((item) => {
       html += `
           <div class="page-break"></div>
-          <div class="header">${item.youtubeId}</div>
+          <div class="header">${item.title}</div>
           <div class="content">
             <h3>Summary:</h3>
-            <p class="summary">${item.summary}</p>
-            <p>URL: <a href="${item.id}">${item.id}</a></p>
+            <p class="summary">${item.YoutubeVideoSummary.summary}</p>
+            <p>URL: <a href="https://www.youtube.com/watch?v=${
+              item.youtubeId
+            }">${`https://www.youtube.com/watch?v=${item.youtubeId}`}</a></p>
           </div>
       `;
     });
@@ -88,7 +95,14 @@ export class PdfGeneratorProcessor {
     return html;
   }
 
-  async createPdf(data: YoutubeVideoSummary[]): Promise<Buffer> {
+  async createPdf(
+    data: {
+      id: string;
+      title: string;
+      youtubeId: string;
+      YoutubeVideoSummary: YoutubeVideoSummary;
+    }[],
+  ): Promise<Buffer> {
     const html = this.createHtmlFromData(data);
     const options: pdf.CreateOptions = { format: 'A4' };
 
@@ -133,40 +147,90 @@ export class PdfGeneratorProcessor {
     }
   }
 
-  async uploadToPrisma(pdfUrl: string, fileIds: string[]): Promise<void> {
+  async createBriefingPdfReportPrisma(
+    pdfUrl: string,
+    youtubeVideoIds: {
+      id: string;
+    }[],
+    briefingOrderId: string,
+    fileName: string,
+  ) {
     try {
-      await this.prismaService.brieferPdfReports.create({
-        data: {
-          pdfUrl,
-          videoSummary: {
-            connect: fileIds.map((fileId) => ({ youtubeId: fileId })),
+      const brieferPdfReport = await this.prismaService.brieferPdfReport.create(
+        {
+          data: {
+            pdfUrl,
+            userBriefingOrderId: briefingOrderId,
+            YoutubeVideo: {
+              connect: youtubeVideoIds,
+            },
+            fileName,
           },
         },
-      });
+      );
+      return brieferPdfReport;
     } catch (error) {
       this.logger.error(
-        `PDF_GENERATOR_WORKER: Failed to upload to Prisma: pdfUrl: ${pdfUrl}, fileIds: ${fileIds.join(
-          ', ',
-        )}, error: ${error.message}`,
+        `PDF_GENERATOR_WORKER: Failed to upload to Prisma: pdfUrl: ${pdfUrl}, videoIds: ${youtubeVideoIds
+          .map((video) => video.id)
+          .join(', ')}, error: ${error.message}`,
       );
       throw error;
     }
   }
 
+  async getBriefingOrder(briefingOrderId: string) {
+    try {
+      const briefingOrder = this.prismaService.userBriefingOrder.findUnique({
+        where: {
+          id: briefingOrderId,
+        },
+        select: {
+          YoutubeVideo: {
+            select: {
+              id: true,
+              youtubeId: true,
+              title: true,
+              YoutubeVideoSummary: true,
+            },
+          },
+        },
+      });
+      return briefingOrder;
+    } catch (error) {
+      throw { PRISMA_ERROR: { briefingOrderId, error } };
+    }
+  }
+
+  async queueEmailSend(userId: string, brieferPdfReportId: string) {
+    const sendEmail = await this.emailSenderQueue.add('sendEmail', {
+      userId,
+      brieferPdfReportId,
+    });
+    this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: sendEmail });
+  }
+
   @Process('generatePdf')
-  async handlePdfGeneration(job: Job<GeneratePdfDto>) {
+  async handlePdfGeneration(job: Job<PdfGeneratorDto>) {
     this.logger.debug('Starting generating pdf...');
     this.logger.debug(job.data);
-    const { fileIds, userId } = job.data;
+    const { userId, briefingOrderId } = job.data;
+    const briefingOrder = await this.getBriefingOrder(briefingOrderId);
 
-    const summaries = await Promise.all(
-      fileIds.map((fileId) => this.getSummaryFromPrisma(fileId)),
+    const videoSummaries = briefingOrder.YoutubeVideo.map((video) => video);
+    const youtubeVideoIds = briefingOrder.YoutubeVideo.map((video) => ({
+      id: video.id,
+    }));
+    const pdfBuffer = await this.createPdf(videoSummaries);
+    await this.uploadPdf(`${userId}-${briefingOrderId}`, pdfBuffer);
+    const pdfUrl = `${this.storageBucket}/${this.storagePdfPath}/${userId}-${briefingOrderId}.pdf`;
+    const brieferPdfReport = await this.createBriefingPdfReportPrisma(
+      pdfUrl,
+      youtubeVideoIds,
+      briefingOrderId,
+      `${userId}-${briefingOrderId}.pdf`,
     );
-    const pdfBuffer = await this.createPdf(summaries);
-    await this.uploadPdf(fileIds.join('-'), pdfBuffer);
-    const pdfUrl = `${this.storageBucket}/${this.storagePdfPath}/${fileIds.join(
-      '-',
-    )}.pdf`;
-    await this.uploadToPrisma(pdfUrl, fileIds);
+    await this.queueEmailSend(userId, brieferPdfReport.id);
+    this.logger.debug('Pdf generated');
   }
 }
