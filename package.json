@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:migrate:dev": "prisma migrate dev --name \"$(date +%s)\"",
     "prisma:format": "prisma format",
-    "kill": "lsof -ti :3000 | xargs kill"
+    "kill": "lsof -ti :3000 | xargs kill",
+    "postinstall": "npm install ytdl-core"
   },
   "dependencies": {
     "@nestjs/bull": "^0.6.3",
@@ -40,8 +41,7 @@
     "nestjs-prisma": "^0.20.0",
     "node-mailjet": "^6.0.2",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.2.0",
-    "ytdl-core": "^4.11.4"
+    "rxjs": "^7.2.0"
   },
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "^10.1.0",
