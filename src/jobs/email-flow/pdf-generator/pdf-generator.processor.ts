@@ -159,6 +159,7 @@ export class PdfGeneratorProcessor {
             select: {
               id: true,
               youtubeId: true,
+              videoAuthor: true,
               title: true,
               YoutubeVideoSummary: {
                 select: {

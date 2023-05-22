@@ -170,7 +170,7 @@ export class AudioDownloaderProcessor {
         });
 
         await this.youtubeAudioLinkService.createYoutubeAudioLink({
-          audioUrl: `${process.env.YOUTUBE_BUCKET}/${this.storageAudioPath}/${data.path}`,
+          audioUrl: `${process.env.YOUTUBE_BUCKET}/${data.path}`,
           youtubeId,
           YoutubeVideo: {
             connect: {
