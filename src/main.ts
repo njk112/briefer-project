@@ -4,6 +4,7 @@ import { PrismaClientExceptionFilter, PrismaService } from 'nestjs-prisma';
 import { ConfigService } from '@nestjs/config';
 import { CorsConfig, NestConfig } from './common/configs/config.interface';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,6 +28,8 @@ async function bootstrap() {
   if (corsConfig.enabled) {
     app.enableCors();
   }
+
+  app.use(helmet());
 
   const PORT = process.env.PORT || nestConfig.port || 3000;
 
