@@ -45,6 +45,9 @@ const config: Config = {
     text: 'Hi, here is your summary!',
     contentType: 'application/pdf',
   },
+  auth: {
+    authKey: process.env.AUTH_KEY,
+  },
 };
 
 export default (): Config => config;

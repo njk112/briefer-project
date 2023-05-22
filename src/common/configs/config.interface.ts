@@ -7,6 +7,7 @@ export interface Config {
   storage: StorageConfig;
   openAi: OpenAiConfig;
   mailJet: MailJetConfig;
+  auth: AuthConfig;
 }
 
 export interface NestConfig {
@@ -58,4 +59,8 @@ export interface MailJetConfig {
   subject: string;
   text: string;
   contentType: string;
+}
+
+export interface AuthConfig {
+  authKey: string;
 }
