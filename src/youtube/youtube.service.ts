@@ -1,5 +1,5 @@
 import { UserBriefingOrderService } from '../common/prisma-related/user-related/UserBriefingOrder/user-briefing-order.service';
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import {
@@ -54,6 +54,7 @@ export class YoutubeService {
   }
 
   async queueTranscribeJobs(queueJob: TranscribeJobDto) {
+    throw new ForbiddenException('Used for testing only');
     const { fileId, userId } = queueJob;
     const jobs = [{ name: 'transcribe', data: { fileId, userId } }];
     const jobsQueue = await this.transcribeQueue.addBulk(jobs);
@@ -62,6 +63,7 @@ export class YoutubeService {
   }
 
   async queueSummariseJobs(queueJob: TranscribeJobDto) {
+    throw new ForbiddenException('Used for testing only');
     const { fileId, userId } = queueJob;
     const jobs = [{ name: 'summarise', data: { fileId, userId } }];
     const jobsQueue = await this.summariserQueue.addBulk(jobs);
@@ -70,6 +72,7 @@ export class YoutubeService {
   }
 
   async queueGeneratePdfJobs(queueJob: GeneratePdfDto) {
+    throw new ForbiddenException('Used for testing only');
     const { fileIds, userId } = queueJob;
     const jobs = [{ name: 'generatePdf', data: { fileIds, userId } }];
     const jobsQueue = await this.pdfGeneratorQueue.addBulk(jobs);
@@ -78,6 +81,7 @@ export class YoutubeService {
   }
 
   async queueSendEmailJobs(queueJob: SendEmailDto) {
+    throw new ForbiddenException('Used for testing only');
     const { fileId, userId } = queueJob;
     const jobs = [{ name: 'sendEmail', data: { fileId, userId } }];
     const jobsQueue = await this.emailSenderQueue.addBulk(jobs);
