@@ -2,7 +2,6 @@ import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job } from 'bull';
-import { PrismaService } from 'nestjs-prisma';
 import {
   MailJetConfig,
   StorageConfig,
@@ -10,6 +9,8 @@ import {
 import { MailjetService } from 'src/common/mailJet/mailJet.service';
 import { SupabaseService } from 'src/common/supabase/supabase.service';
 import { EmailSendDto } from './dto/emailSendDto';
+import { BrieferPdfReportService } from 'src/common/prisma-related/BrieferPdfReport/briefer-pdf-report.service';
+import { UserService } from 'src/common/prisma-related/user-related/User/user.service';
 @Processor('email-sender')
 export class EmailSenderProcessor {
   private storageBucket: string;
@@ -21,9 +22,10 @@ export class EmailSenderProcessor {
   private contentType: string;
   constructor(
     private supabaseService: SupabaseService,
-    private prismaService: PrismaService,
     private configService: ConfigService,
     private mailJetService: MailjetService,
+    private userService: UserService,
+    private brieferPdfReportService: BrieferPdfReportService,
   ) {
     this.storageBucket =
       this.configService.get<StorageConfig>('storage').bucket;
@@ -55,53 +57,15 @@ export class EmailSenderProcessor {
     }
   }
 
-  async updatePrisma(brieferPdfReportId: string) {
-    try {
-      await this.prismaService.brieferPdfReport.update({
-        data: {
-          isSent: true,
-        },
-        where: {
-          id: brieferPdfReportId,
-        },
-      });
-    } catch (error) {
-      throw { PRISMA_ERROR: { brieferPdfReportId, error } };
-    }
-  }
-
-  async getUserEmail(userId: string) {
-    try {
-      const user = await this.prismaService.user.findUnique({
-        where: {
-          id: userId,
-        },
-      });
-      return user;
-    } catch (error) {
-      throw { PRISMA_ERROR: { userId, error } };
-    }
-  }
-
-  async getBrieferPdfReport(brieferPdfReportId: string) {
-    try {
-      const pdfReport = await this.prismaService.brieferPdfReport.findUnique({
-        where: {
-          id: brieferPdfReportId,
-        },
-      });
-      return pdfReport;
-    } catch (error) {
-      throw { PRISMA_ERROR: { brieferPdfReportId, error } };
-    }
-  }
-
   @Process('sendEmail')
   async sendEmail(job: Job<EmailSendDto>) {
     this.logger.debug('Starting sending email...');
     this.logger.debug(job.data);
     const { brieferPdfReportId, userId } = job.data;
-    const pdfReport = await this.getBrieferPdfReport(brieferPdfReportId);
+
+    const pdfReport = await this.brieferPdfReportService.getBrieferPdfReport({
+      id: brieferPdfReportId,
+    });
 
     if (pdfReport?.isSent) {
       this.logger.debug('Report has been already sent');
@@ -110,7 +74,7 @@ export class EmailSenderProcessor {
       const arrayBuffer = await new Response(pdfFile).arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      const user = await this.getUserEmail(userId);
+      const user = await this.userService.getUser({ id: userId });
 
       const email = {
         to: user.email,
@@ -125,7 +89,10 @@ export class EmailSenderProcessor {
 
       const isSent = await this.mailJetService.sendEmail(email);
       if (isSent) {
-        await this.updatePrisma(pdfReport.id);
+        await this.brieferPdfReportService.updateBrieferPdfReport(
+          { id: pdfReport.id },
+          { isSent: true },
+        );
       }
       this.logger.debug('Email sent');
     }

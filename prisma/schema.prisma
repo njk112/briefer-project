@@ -50,7 +50,6 @@ model YoutubeAudioLink {
   id             String       @id @default(uuid())
   audioUrl       String       @unique
   youtubeId      String       @unique
-  timesAccessed  Int          @default(0)
   YoutubeVideo   YoutubeVideo @relation(fields: [youtubeVideoId], references: [id])
   dateCreated    DateTime     @default(now())
   youtubeVideoId String       @unique
@@ -59,7 +58,6 @@ model YoutubeAudioLink {
 model YoutubeTextLink {
   id             String       @id @default(uuid())
   youtubeId      String       @unique
-  timesAccessed  Int          @default(0)
   textUrl        String       @unique
   YoutubeVideo   YoutubeVideo @relation(fields: [youtubeVideoId], references: [id])
   dateCreated    DateTime     @default(now())
@@ -69,7 +67,6 @@ model YoutubeTextLink {
 model YoutubeVideoSummary {
   id             String       @id @default(uuid())
   youtubeId      String       @unique
-  timesAccessed  Int          @default(0)
   summary        String
   YoutubeVideo   YoutubeVideo @relation(fields: [youtubeVideoId], references: [id])
   dateCreated    DateTime     @default(now())
@@ -81,7 +78,6 @@ model BrieferPdfReport {
   pdfUrl              String            @unique
   fileName            String
   isSent              Boolean           @default(false)
-  timesAccessed       Int               @default(0)
   YoutubeVideo        YoutubeVideo[]    @relation("VideoBrieferReports")
   dateCreated         DateTime          @default(now())
   UserBriefingOrder   UserBriefingOrder @relation(fields: [userBriefingOrderId], references: [id])

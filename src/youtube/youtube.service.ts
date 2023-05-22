@@ -1,5 +1,5 @@
+import { UserBriefingOrderService } from '../common/prisma-related/user-related/UserBriefingOrder/user-briefing-order.service';
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from 'nestjs-prisma';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import {
@@ -8,11 +8,13 @@ import {
   SendEmailDto,
   TranscribeJobDto,
 } from './dto/queue-jobs.dto';
+import { UserService } from 'src/common/prisma-related/user-related/User/user.service';
 
 @Injectable()
 export class YoutubeService {
   constructor(
-    private prisma: PrismaService,
+    private userService: UserService,
+    private userBriefingOrderService: UserBriefingOrderService,
     @InjectQueue('youtube-audio') private audioQueue: Queue,
     @InjectQueue('audio-to-text') private transcribeQueue: Queue,
     @InjectQueue('text-summariser') private summariserQueue: Queue,
@@ -22,49 +24,32 @@ export class YoutubeService {
 
   private readonly logger = new Logger(YoutubeService.name);
 
-  async createUser(userEmail: string) {
-    this.logger.debug(`Creating user: ${userEmail}`);
-    const user = await this.prisma.user.create({
-      data: {
-        email: userEmail,
-      },
-    });
-    return user;
-  }
-
-  async getUser(userEmail: string) {
-    this.logger.debug(`Getting user: ${userEmail}`);
-    const user = await this.prisma.user.findUnique({
-      where: { email: userEmail },
-    });
-    return user;
-  }
-
-  async createBriefingOrder(userId: string, totalVideos: number) {
-    this.logger.debug(`Creating briefing order: ${userId}`);
-    const briefingOrder = await this.prisma.userBriefingOrder.create({
-      data: {
-        totalVideos,
-        userId: userId,
-      },
-    });
-    return briefingOrder;
-  }
-
   async queueJobs(queueJobs: QueueJobDto) {
+    this.logger.debug(`Queueing jobs: ${JSON.stringify(queueJobs)}`);
     const { urls, userEmail } = queueJobs;
 
-    let user = await this.getUser(userEmail);
-    if (!user) user = await this.createUser(userEmail);
-    const briefingOrder = await this.createBriefingOrder(user.id, urls.length);
+    let user = await this.userService.getUser({ email: userEmail });
+
+    if (!user) {
+      user = await this.userService.createUser({ email: userEmail });
+    }
+
+    const briefingOder =
+      await this.userBriefingOrderService.createUserBriefingOrder({
+        totalVideos: urls.length,
+        User: {
+          connect: { id: user.id },
+        },
+      });
 
     const jobs = urls.map((url) => ({
       name: 'download',
-      data: { url, userId: user.id, briefingOrderId: briefingOrder.id },
+      data: { url, userId: user.id, briefingOrderId: briefingOder.id },
     }));
 
     const jobsQueue = await this.audioQueue.addBulk(jobs);
 
+    this.logger.debug(`Jobs queued: ${JSON.stringify(jobsQueue)}`);
     return jobsQueue;
   }
 

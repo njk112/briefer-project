@@ -4,6 +4,8 @@ import { SupabaseModule } from 'src/common/supabase/supabase.module';
 import { AudioToTextProcessor } from './audio-to-text.processor';
 import { OpenAiModule } from 'src/common/openAi/openAi.module';
 import { TextSummariserModule } from '../text-summariser/text-summariser.module';
+import { YoutubeTextLinkModule } from 'src/common/prisma-related/youtube-related/YoutubeTextLink/youtube-text-link.module';
+import { YoutubeVideoModule } from 'src/common/prisma-related/youtube-related/YoutubeVideo/youtube-video.module';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { TextSummariserModule } from '../text-summariser/text-summariser.module'
     SupabaseModule,
     OpenAiModule,
     TextSummariserModule,
+    YoutubeTextLinkModule,
+    YoutubeVideoModule,
   ],
   providers: [AudioToTextProcessor],
   exports: [BullModule],

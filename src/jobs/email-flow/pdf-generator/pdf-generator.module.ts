@@ -4,6 +4,8 @@ import { SupabaseModule } from 'src/common/supabase/supabase.module';
 import { PdfGeneratorProcessor } from './pdf-generator.processor';
 import { PrismaModule } from 'nestjs-prisma';
 import { EmailSenderModule } from '../email-sender/email-sender.module';
+import { UserBriefingOrderModule } from 'src/common/prisma-related/user-related/UserBriefingOrder/user-briefing-order.module';
+import { BrieferPdfReportModule } from 'src/common/prisma-related/BrieferPdfReport/briefer-pdf-report.module';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { EmailSenderModule } from '../email-sender/email-sender.module';
     SupabaseModule,
     PrismaModule,
     EmailSenderModule,
+    UserBriefingOrderModule,
+    BrieferPdfReportModule,
   ],
   providers: [PdfGeneratorProcessor],
   exports: [BullModule],

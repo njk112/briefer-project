@@ -1,13 +1,14 @@
 import { InjectQueue, Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job, Queue } from 'bull';
-import { PrismaService } from 'nestjs-prisma';
 import { SupabaseService } from 'src/common/supabase/supabase.service';
 import * as pdf from 'html-pdf';
 import { ConfigService } from '@nestjs/config';
 import { StorageConfig } from 'src/common/configs/config.interface';
-import { YoutubeVideoSummary } from '@prisma/client';
 import { PdfGeneratorDto } from './dto/pdfGenerator.dto';
+import { UserBriefingOrderService } from 'src/common/prisma-related/user-related/UserBriefingOrder/user-briefing-order.service';
+import { PdfGeneratorYoutubeVideo } from './types/videoSummaries.type';
+import { BrieferPdfReportService } from 'src/common/prisma-related/BrieferPdfReport/briefer-pdf-report.service';
 
 @Processor('pdf-generator')
 export class PdfGeneratorProcessor {
@@ -16,8 +17,9 @@ export class PdfGeneratorProcessor {
 
   constructor(
     private supabaseService: SupabaseService,
-    private prismaService: PrismaService,
     private configService: ConfigService,
+    private userBriefingOrderService: UserBriefingOrderService,
+    private brieferPdfReportService: BrieferPdfReportService,
 
     @InjectQueue('email-sender') private emailSenderQueue: Queue,
   ) {
@@ -29,28 +31,7 @@ export class PdfGeneratorProcessor {
 
   private readonly logger = new Logger(PdfGeneratorProcessor.name);
 
-  async getSummaryFromPrisma(fileId: string) {
-    try {
-      const summary = await this.prismaService.youtubeVideoSummary.findUnique({
-        where: { youtubeId: fileId },
-      });
-      return summary;
-    } catch (error) {
-      this.logger.error(
-        `PDF_GENERATOR_WORKER: Failed to get summary from Prisma: fileId: ${fileId}, error: ${error.message}`,
-      );
-      throw error;
-    }
-  }
-
-  private createHtmlFromData(
-    data: {
-      id: string;
-      youtubeId: string;
-      title: string;
-      YoutubeVideoSummary: YoutubeVideoSummary;
-    }[],
-  ): string {
+  private createHtmlFromData(data: PdfGeneratorYoutubeVideo[]): string {
     let html = `
     <!DOCTYPE html>
     <html>
@@ -95,14 +76,7 @@ export class PdfGeneratorProcessor {
     return html;
   }
 
-  async createPdf(
-    data: {
-      id: string;
-      title: string;
-      youtubeId: string;
-      YoutubeVideoSummary: YoutubeVideoSummary;
-    }[],
-  ): Promise<Buffer> {
+  async createPdf(data: PdfGeneratorYoutubeVideo[]): Promise<Buffer> {
     const html = this.createHtmlFromData(data);
     const options: pdf.CreateOptions = { format: 'A4' };
 
@@ -147,61 +121,6 @@ export class PdfGeneratorProcessor {
     }
   }
 
-  async createBriefingPdfReportPrisma(
-    pdfUrl: string,
-    youtubeVideoIds: {
-      id: string;
-    }[],
-    briefingOrderId: string,
-    fileName: string,
-  ) {
-    try {
-      const brieferPdfReport = await this.prismaService.brieferPdfReport.create(
-        {
-          data: {
-            pdfUrl,
-            userBriefingOrderId: briefingOrderId,
-            YoutubeVideo: {
-              connect: youtubeVideoIds,
-            },
-            fileName,
-          },
-        },
-      );
-      return brieferPdfReport;
-    } catch (error) {
-      this.logger.error(
-        `PDF_GENERATOR_WORKER: Failed to upload to Prisma: pdfUrl: ${pdfUrl}, videoIds: ${youtubeVideoIds
-          .map((video) => video.id)
-          .join(', ')}, error: ${error.message}`,
-      );
-      throw error;
-    }
-  }
-
-  async getBriefingOrder(briefingOrderId: string) {
-    try {
-      const briefingOrder = this.prismaService.userBriefingOrder.findUnique({
-        where: {
-          id: briefingOrderId,
-        },
-        select: {
-          YoutubeVideo: {
-            select: {
-              id: true,
-              youtubeId: true,
-              title: true,
-              YoutubeVideoSummary: true,
-            },
-          },
-        },
-      });
-      return briefingOrder;
-    } catch (error) {
-      throw { PRISMA_ERROR: { briefingOrderId, error } };
-    }
-  }
-
   async queueEmailSend(userId: string, brieferPdfReportId: string) {
     const sendEmail = await this.emailSenderQueue.add('sendEmail', {
       userId,
@@ -215,21 +134,52 @@ export class PdfGeneratorProcessor {
     this.logger.debug('Starting generating pdf...');
     this.logger.debug(job.data);
     const { userId, briefingOrderId } = job.data;
-    const briefingOrder = await this.getBriefingOrder(briefingOrderId);
 
-    const videoSummaries = briefingOrder.YoutubeVideo.map((video) => video);
-    const youtubeVideoIds = briefingOrder.YoutubeVideo.map((video) => ({
+    const userBriefingOrder =
+      await this.userBriefingOrderService.getUserBriefingOrder(
+        {
+          id: briefingOrderId,
+        },
+        {
+          YoutubeVideo: {
+            select: {
+              id: true,
+              youtubeId: true,
+              title: true,
+              YoutubeVideoSummary: {
+                select: {
+                  summary: true,
+                },
+              },
+            },
+          },
+        },
+      );
+
+    const videoSummaries = userBriefingOrder.YoutubeVideo.map((video) => video);
+    const youtubeVideoIds = userBriefingOrder.YoutubeVideo.map((video) => ({
       id: video.id,
     }));
-    const pdfBuffer = await this.createPdf(videoSummaries);
+    const pdfBuffer = await this.createPdf(
+      videoSummaries as PdfGeneratorYoutubeVideo[],
+    );
     await this.uploadPdf(`${userId}-${briefingOrderId}`, pdfBuffer);
     const pdfUrl = `${this.storageBucket}/${this.storagePdfPath}/${userId}-${briefingOrderId}.pdf`;
-    const brieferPdfReport = await this.createBriefingPdfReportPrisma(
-      pdfUrl,
-      youtubeVideoIds,
-      briefingOrderId,
-      `${userId}-${briefingOrderId}.pdf`,
-    );
+
+    const brieferPdfReport =
+      await this.brieferPdfReportService.createBrieferPdfReport({
+        pdfUrl,
+        fileName: `${userId}-${briefingOrderId}.pdf`,
+        UserBriefingOrder: {
+          connect: {
+            id: briefingOrderId,
+          },
+        },
+        YoutubeVideo: {
+          connect: youtubeVideoIds,
+        },
+      });
+
     await this.queueEmailSend(userId, brieferPdfReport.id);
     this.logger.debug('Pdf generated');
   }

@@ -1,5 +1,5 @@
 import { Module, Logger } from '@nestjs/common';
-import { CatsModule } from './youtube/youtube.module';
+import { YoutubeModule } from './youtube/youtube.module';
 import { ConfigModule, ConfigService } from '@nestjs/config'; // Make sure to import ConfigService
 import { PrismaModule, loggingMiddleware } from 'nestjs-prisma';
 
@@ -31,7 +31,7 @@ import { RedisConfig } from './common/configs/config.interface';
       }),
       inject: [ConfigService],
     }),
-    CatsModule,
+    YoutubeModule,
   ],
 })
 export class AppModule {}

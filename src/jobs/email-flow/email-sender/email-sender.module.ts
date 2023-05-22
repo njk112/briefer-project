@@ -3,6 +3,8 @@ import { Module } from '@nestjs/common';
 import { SupabaseModule } from 'src/common/supabase/supabase.module';
 import { EmailSenderProcessor } from './email-sender.processor';
 import { MailJetModule } from 'src/common/mailJet/mailJet.module';
+import { UserModule } from 'src/common/prisma-related/user-related/User/user.module';
+import { BrieferPdfReportModule } from 'src/common/prisma-related/BrieferPdfReport/briefer-pdf-report.module';
 
 @Module({
   imports: [
@@ -11,6 +13,8 @@ import { MailJetModule } from 'src/common/mailJet/mailJet.module';
     }),
     SupabaseModule,
     MailJetModule,
+    UserModule,
+    BrieferPdfReportModule,
   ],
   providers: [EmailSenderProcessor],
   exports: [BullModule],
