@@ -144,58 +144,64 @@ export class PdfGeneratorProcessor {
 
   @Process('generatePdf')
   async handlePdfGeneration(job: Job<PdfGeneratorDto>) {
-    this.logger.debug('PDF_GENERATOR_WORKER: Starting generating pdf...');
-    this.logger.debug({ PDF_GENERATOR_WORKER: { data: job.data } });
+    try {
+      this.logger.debug('PDF_GENERATOR_WORKER: Starting generating pdf...');
+      this.logger.debug({ PDF_GENERATOR_WORKER: { data: job.data } });
 
-    const { userId, briefingOrderId } = job.data;
+      const { userId, briefingOrderId } = job.data;
 
-    const userBriefingOrder =
-      await this.userBriefingOrderService.getUserBriefingOrder(
-        {
-          id: briefingOrderId,
-        },
-        {
-          YoutubeVideo: {
-            select: {
-              id: true,
-              youtubeId: true,
-              videoAuthor: true,
-              title: true,
-              YoutubeVideoSummary: {
-                select: {
-                  summary: true,
+      const userBriefingOrder =
+        await this.userBriefingOrderService.getUserBriefingOrder(
+          {
+            id: briefingOrderId,
+          },
+          {
+            YoutubeVideo: {
+              select: {
+                id: true,
+                youtubeId: true,
+                videoAuthor: true,
+                title: true,
+                YoutubeVideoSummary: {
+                  select: {
+                    summary: true,
+                  },
                 },
               },
             },
           },
-        },
+        );
+
+      const videoSummaries = userBriefingOrder.YoutubeVideo.map(
+        (video) => video,
       );
+      const youtubeVideoIds = userBriefingOrder.YoutubeVideo.map((video) => ({
+        id: video.id,
+      }));
+      const pdfBuffer = await this.createPdf(
+        videoSummaries as PdfGeneratorYoutubeVideo[],
+      );
+      await this.uploadPdf(`${userId}-${briefingOrderId}`, pdfBuffer);
+      const pdfUrl = `${this.storageBucket}/${this.storagePdfPath}/${userId}-${briefingOrderId}.pdf`;
 
-    const videoSummaries = userBriefingOrder.YoutubeVideo.map((video) => video);
-    const youtubeVideoIds = userBriefingOrder.YoutubeVideo.map((video) => ({
-      id: video.id,
-    }));
-    const pdfBuffer = await this.createPdf(
-      videoSummaries as PdfGeneratorYoutubeVideo[],
-    );
-    await this.uploadPdf(`${userId}-${briefingOrderId}`, pdfBuffer);
-    const pdfUrl = `${this.storageBucket}/${this.storagePdfPath}/${userId}-${briefingOrderId}.pdf`;
-
-    const brieferPdfReport =
-      await this.brieferPdfReportService.createBrieferPdfReport({
-        pdfUrl,
-        fileName: `${userId}-${briefingOrderId}.pdf`,
-        UserBriefingOrder: {
-          connect: {
-            id: briefingOrderId,
+      const brieferPdfReport =
+        await this.brieferPdfReportService.createBrieferPdfReport({
+          pdfUrl,
+          fileName: `${userId}-${briefingOrderId}.pdf`,
+          UserBriefingOrder: {
+            connect: {
+              id: briefingOrderId,
+            },
           },
-        },
-        YoutubeVideo: {
-          connect: youtubeVideoIds,
-        },
-      });
+          YoutubeVideo: {
+            connect: youtubeVideoIds,
+          },
+        });
 
-    await this.queueEmailSend(userId, brieferPdfReport.id);
-    this.logger.debug('PDF_GENERATOR_WORKER: Pdf generated');
+      await this.queueEmailSend(userId, brieferPdfReport.id);
+      this.logger.debug('PDF_GENERATOR_WORKER: Pdf generated');
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 }

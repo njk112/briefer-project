@@ -29,6 +29,9 @@ export interface SupabaseConfig {
 
 export interface RedisConfig {
   redisUrl: string;
+  redisHost: string;
+  redisPort: number;
+  redisPassword: string;
 }
 
 export interface StorageConfig {

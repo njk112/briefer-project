@@ -16,6 +16,9 @@ const config: Config = {
   },
   redis: {
     redisUrl: process.env.REDIS_URL,
+    redisHost: process.env.REDIS_HOST_URL,
+    redisPort: Number(process.env.REDIS_HOST_PORT),
+    redisPassword: process.env.REDIS_HOST_PASSWORD,
   },
   storage: {
     bucket: process.env.YOUTUBE_BUCKET,

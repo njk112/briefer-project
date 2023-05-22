@@ -25,32 +25,36 @@ export class YoutubeService {
   private readonly logger = new Logger(YoutubeService.name);
 
   async queueJobs(queueJobs: QueueJobDto) {
-    this.logger.debug(`Queueing jobs: ${JSON.stringify(queueJobs)}`);
-    const { urls, userEmail } = queueJobs;
+    try {
+      this.logger.debug(`Queueing jobs: ${JSON.stringify(queueJobs)}`);
+      const { urls, userEmail } = queueJobs;
 
-    let user = await this.userService.getUser({ email: userEmail });
+      let user = await this.userService.getUser({ email: userEmail });
 
-    if (!user) {
-      user = await this.userService.createUser({ email: userEmail });
+      if (!user) {
+        user = await this.userService.createUser({ email: userEmail });
+      }
+
+      const briefingOder =
+        await this.userBriefingOrderService.createUserBriefingOrder({
+          totalVideos: urls.length,
+          User: {
+            connect: { id: user.id },
+          },
+        });
+
+      const jobs = urls.map((url) => ({
+        name: 'download',
+        data: { url, userId: user.id, briefingOrderId: briefingOder.id },
+      }));
+
+      const jobsQueue = await this.audioQueue.addBulk(jobs);
+
+      this.logger.debug(`Jobs queued: ${JSON.stringify(jobsQueue)}`);
+      return jobsQueue;
+    } catch (error) {
+      this.logger.error(error);
     }
-
-    const briefingOder =
-      await this.userBriefingOrderService.createUserBriefingOrder({
-        totalVideos: urls.length,
-        User: {
-          connect: { id: user.id },
-        },
-      });
-
-    const jobs = urls.map((url) => ({
-      name: 'download',
-      data: { url, userId: user.id, briefingOrderId: briefingOder.id },
-    }));
-
-    const jobsQueue = await this.audioQueue.addBulk(jobs);
-
-    this.logger.debug(`Jobs queued: ${JSON.stringify(jobsQueue)}`);
-    return jobsQueue;
   }
 
   async queueTranscribeJobs(queueJob: TranscribeJobDto) {
