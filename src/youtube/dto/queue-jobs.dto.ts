@@ -3,7 +3,7 @@ import { IsString, IsArray, ArrayNotEmpty, IsNotEmpty } from 'class-validator';
 export class QueueJobDto {
   @IsString()
   @IsNotEmpty()
-  userId: string;
+  userEmail: string;
 
   @IsArray()
   @ArrayNotEmpty()
