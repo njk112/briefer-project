@@ -28,6 +28,7 @@ import { RedisConfig } from './common/configs/config.interface';
           host: configService.get<RedisConfig>('redis').redisHost,
           port: configService.get<RedisConfig>('redis').redisPort,
           password: configService.get<RedisConfig>('redis').redisPassword,
+          tls: {},
         },
       }),
       inject: [ConfigService],
