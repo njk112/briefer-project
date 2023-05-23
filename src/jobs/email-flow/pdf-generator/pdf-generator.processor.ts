@@ -2,7 +2,6 @@ import { InjectQueue, Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job, Queue } from 'bull';
 import { SupabaseService } from 'src/common/supabase/supabase.service';
-import * as pdf from 'html-pdf';
 import { ConfigService } from '@nestjs/config';
 import { StorageConfig } from 'src/common/configs/config.interface';
 import { PdfGeneratorDto } from './dto/pdfGenerator.dto';
@@ -10,6 +9,7 @@ import { UserBriefingOrderService } from 'src/common/prisma-related/user-related
 import { PdfGeneratorYoutubeVideo } from './types/videoSummaries.type';
 import { BrieferPdfReportService } from 'src/common/prisma-related/BrieferPdfReport/briefer-pdf-report.service';
 import { PdfGeneratorException } from './exceptions/pdf-generator.exceptions';
+import * as PDFKit from 'pdfkit';
 
 @Processor('pdf-generator')
 export class PdfGeneratorProcessor {
@@ -38,80 +38,61 @@ export class PdfGeneratorProcessor {
     throw error;
   }
 
-  private createHtmlFromData(data: PdfGeneratorYoutubeVideo[]): string {
+  private createDocFromData(
+    data: PdfGeneratorYoutubeVideo[],
+  ): PDFKit.PDFDocument {
     try {
-      let html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <style>
-              body { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-              .header { padding: 20px; font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 0.1em; }
-              .content { padding: 2rem; text-align: justify; }
-              .summary { font-size: 16px; }
-              .page-break { page-break-after: always; }
-          </style>
-      </head>
-      <body>
-          <div class="header">BRIEFER</div>
-          <div class="content">
-              <h2>Table of Contents:</h2>
-              <ol>
-      `;
+      const doc = new PDFKit();
+      doc.fontSize(25).text('BRIEFER', { align: 'center' });
+      doc.moveDown(3);
 
-      data.forEach((item) => {
-        html += `<li>${item.title}</li>`;
+      doc.fontSize(18).text('Table of Contents:');
+      data.forEach((item, i) => {
+        doc.fontSize(16).text(`${i + 1}. ${item.title}`);
       });
 
-      html += `</ol>`;
-
       data.forEach((item) => {
-        html += `
-            <div class="page-break"></div>
-            <div class="header">${item.title}</div>
-            <div class="content">
-              <h3>Summary:</h3>
-              <p class="summary">${item.YoutubeVideoSummary.summary}</p>
-              <p>Author ${item.videoAuthor}</p>
-              <p>URL: <a href="https://www.youtube.com/watch?v=${
-                item.youtubeId
-              }">${`https://www.youtube.com/watch?v=${item.youtubeId}`}</a></p>
-            </div>
-        `;
+        doc.addPage().fontSize(20).text(item.title, { align: 'center' });
+        doc.moveDown(2);
+
+        doc
+          .fontSize(16)
+          .text('Summary:')
+          .text(item.YoutubeVideoSummary.summary);
+        doc.moveDown(1);
+        doc.text(`Author: ${item.videoAuthor}`);
+        doc.text(`URL: https://www.youtube.com/watch?v=${item.youtubeId}`);
       });
 
-      html += `</body></html>`;
-      return html;
+      return doc;
     } catch (error) {
       this.handleError(error);
     }
   }
 
   async createPdf(data: PdfGeneratorYoutubeVideo[]): Promise<Buffer> {
-    const html = this.createHtmlFromData(data);
-    const options: pdf.CreateOptions = { format: 'A4' };
-
     try {
-      const buffer = await this.createBufferFromHtml(html, options);
+      console.log('jonas1');
+      const doc = this.createDocFromData(data);
+      console.log('jonas2');
+
+      const buffer = await this.createBufferFromDoc(doc);
+      console.log('jonas4');
+
       return buffer;
     } catch (error) {
       this.handleError(error);
     }
   }
 
-  private createBufferFromHtml(
-    html: string,
-    options: pdf.CreateOptions,
-  ): Promise<Buffer> {
+  private createBufferFromDoc(doc: PDFKit.PDFDocument): Promise<Buffer> {
     try {
+      const chunks = [];
       return new Promise((resolve, reject) => {
-        pdf.create(html, options).toBuffer((err, buffer) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(buffer);
-          }
-        });
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', (err) => reject(err));
+        doc.end();
       });
     } catch (error) {
       this.handleError(error);
@@ -136,7 +117,7 @@ export class PdfGeneratorProcessor {
         userId,
         brieferPdfReportId,
       });
-      this.logger.debug({ ADDED_JOB_TO_OTHER_QUEUE: sendEmail });
+      this.logger.debug({ PDF_GENERATOR_WORKER_NEXT_QUEUE: sendEmail });
     } catch (error) {
       this.handleError(error);
     }
