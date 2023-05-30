@@ -59,6 +59,7 @@ export const textConfig = {
 export const apiMessages = {
 	summary: {
 		"200": "Success",
+		"415": "You have used all of your free quota.",
 		"416": "Please enter a valid YouTube url.",
 		"417": "Email or Youtube urls are empty",
 		"418": "Please enter a valid email address.",

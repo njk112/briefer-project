@@ -3,6 +3,19 @@ import { emailValidation } from "@/utils/EmailValidation";
 import { isValidYouTubeUrl } from "@/utils/UrlValidation";
 import { NextRequest, NextResponse } from "next/server";
 
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
+const redis = new Redis({
+	url: process.env.UPSTASH_REDIS_REST_URL as string,
+	token: process.env.UPSTASH_REDIS_REST_TOKEN as string,
+});
+
+const ratelimit = new Ratelimit({
+	redis: redis,
+	limiter: Ratelimit.fixedWindow(2, "15 m"),
+});
+
 export async function POST(request: NextRequest) {
 	const { email, youtubeUrls } = await request.json();
 	if (!email || !youtubeUrls) {
@@ -15,6 +28,14 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json(
 			{ message: apiMessages.summary["418"] },
 			{ status: 418 }
+		);
+	}
+	const limiter = await ratelimit.limit(email);
+	console.log({ limiter });
+	if (limiter.success === false) {
+		return NextResponse.json(
+			{ message: apiMessages.summary["415"] },
+			{ status: 429 }
 		);
 	}
 	if (youtubeUrls.length > 5) {
@@ -31,7 +52,14 @@ export async function POST(request: NextRequest) {
 			);
 		}
 	});
-	const data = { message: "Hello World!", status: 200 };
+	const data = {
+		message: "Hello World!",
+		status: 200,
+		headers: {
+			"X-RateLimit-Limit": `${limiter.limit}`,
+			"X-RateLimit-Remaining": `${limiter.remaining}`,
+		},
+	};
 
 	return NextResponse.json(data);
 }
