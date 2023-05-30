@@ -3,6 +3,7 @@ import {
 	UserCircleIcon,
 	VideoCameraIcon,
 } from "@heroicons/react/20/solid";
+import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 
 export const textConfig = {
 	landingPage: {
@@ -90,4 +91,13 @@ export const featureConfig = {
 
 export const navigation = [
 	{ name: "Youtube Summaries", href: "youtube-summaries" },
+];
+
+export const dashboardNavigation = [
+	{
+		name: "Youtube Summaries",
+		href: "youtube-summaries",
+		icon: DocumentDuplicateIcon,
+		current: true,
+	},
 ];

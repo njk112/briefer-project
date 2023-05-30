@@ -1,9 +1,9 @@
-import LogoCloud from "../LogoCloud/LogoCloud";
-import FeatureSection from "../FeatureSection/FeatureSection";
-import Hero from "../Hero/Hero";
-import Footer from "./Footer/Footer";
-import Header from "../Header/Header";
-import { textConfig } from "@/text.config";
+import LogoCloud from "@components/Landing-related/LogoCloud/LogoCloud";
+import FeatureSection from "@components/Landing-related/FeatureSection/FeatureSection";
+import Hero from "@components/Landing-related/Hero/Hero";
+import Footer from "@components/Landing-related/Footer/Footer";
+import Header from "@components/Landing-related/Header/Header";
+import { textConfig } from "@/app.config";
 
 export default function LandingPage() {
 	return (

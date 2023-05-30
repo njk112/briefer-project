@@ -1,7 +1,8 @@
 "use client";
-import { navigation } from "@/text.config";
+import { navigation } from "@/app.config";
 import { Dialog } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import Image from "next/image";
 import { useState } from "react";
 
 export type HeaderArgs = {
@@ -23,7 +24,13 @@ function Header({ company, mainMenu, closeMenu, logoLink }: HeaderArgs) {
 				<div className="flex lg:flex-1">
 					<a href={logoLink} className="-m-1.5 p-1.5">
 						<span className="sr-only">{company}</span>
-						<img className="h-4 w-auto" src="briefer.png" alt="Briefer logo" />
+						<Image
+							className="h-4 w-auto"
+							src="/briefer.png"
+							alt="Briefer logo"
+							width={100}
+							height={100}
+						/>
 					</a>
 				</div>
 				<div className="flex lg:hidden">

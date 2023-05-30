@@ -1,9 +1,10 @@
 "use client";
-import { classNames } from "../../../../utils/ClassNames";
-import { navigation } from "../../../../utils/Navigation.config";
+import { classNames } from "@utils/ClassNames";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { dashboardNavigation } from "@/app.config";
+import Image from "next/image";
 
 export type MobileSideBarProps = {
 	title: string;
@@ -75,10 +76,12 @@ function MobileSideBar({
 								<div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2">
 									<div className="flex h-16 shrink-0 items-center">
 										<a href="/">
-											<img
+											<Image
 												className="h-4 w-auto"
-												src="./briefer.png"
+												src="/briefer.png"
 												alt="Briefer"
+												width={100}
+												height={100}
 											/>
 										</a>
 									</div>
@@ -86,7 +89,7 @@ function MobileSideBar({
 										<ul role="list" className="flex flex-1 flex-col gap-y-7">
 											<li>
 												<ul role="list" className="-mx-2 space-y-1">
-													{navigation.map((item) => (
+													{dashboardNavigation.map((item) => (
 														<li key={item.name}>
 															<a
 																href={item.href}

@@ -1,7 +1,7 @@
-import { textConfig } from "@/text.config";
-import DesktopSideBar from "../Sidebars/DesktopSideBar/DesktopSidebar";
-import MobileSideBar from "../Sidebars/MobileSideBar/MobileSidebar";
-import AddVideos from "../YoutubeVideos/YoutubeVideos";
+import { textConfig } from "@/app.config";
+import DesktopSideBar from "@components/Dashboard-related/Sidebars/DesktopSideBar/DesktopSidebar";
+import MobileSideBar from "@components/Dashboard-related/Sidebars/MobileSideBar/MobileSidebar";
+import AddVideos from "@components/Dashboard-related/YoutubeVideos/YoutubeVideos";
 
 export default function Dashboard() {
 	return (

@@ -1,4 +1,4 @@
-import { apiMessages } from "@/text.config";
+import { apiMessages } from "@/app.config";
 import { emailValidation } from "@/utils/EmailValidation";
 import { isValidYouTubeUrl } from "@/utils/UrlValidation";
 import { NextRequest, NextResponse } from "next/server";

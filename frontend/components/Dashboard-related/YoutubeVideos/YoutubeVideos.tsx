@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
-import EmailInput from "../InputBars/EmailInput";
-import UrlsInput from "../InputBars/UrlsInput";
-import { textConfig } from "@/text.config";
-import PositiveAlert from "../Alerts/PositiveAlert/PositiveAlert";
-import NegativeAlert from "../Alerts/NegativeAlert/NegativeAlert";
+import UrlsInput from "@components/Dashboard-related/InputBars/UrlsInput";
+import { textConfig } from "@/app.config";
+import PositiveAlert from "@components/Dashboard-related/Alerts/PositiveAlert/PositiveAlert";
+import NegativeAlert from "@components/Dashboard-related/Alerts/NegativeAlert/NegativeAlert";
+import EmailInput from "@components/Dashboard-related/InputBars/EmailInput";
 
 export default function AddVideos() {
 	const [youtubeUrl, setYoutubeUrl] = useState<string | null>(null);

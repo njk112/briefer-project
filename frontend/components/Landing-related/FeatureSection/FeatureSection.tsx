@@ -1,4 +1,4 @@
-import { featureConfig } from "@/text.config";
+import { featureConfig } from "@/app.config";
 
 export type FeatureSectionProps = {
 	subTitle: string;

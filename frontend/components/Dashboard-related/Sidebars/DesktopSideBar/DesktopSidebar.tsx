@@ -1,5 +1,6 @@
-import { classNames } from "../../../../utils/ClassNames";
-import { navigation } from "../../../../utils/Navigation.config";
+import { dashboardNavigation } from "@/app.config";
+import { classNames } from "@utils/ClassNames";
+import Image from "next/image";
 
 function DesktopSideBar() {
 	return (
@@ -8,14 +9,20 @@ function DesktopSideBar() {
 				<div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6">
 					<div className="flex h-16 shrink-0 items-center">
 						<a href="/">
-							<img className="h-4 w-auto" src="./briefer.png" alt="Briefer" />
+							<Image
+								className="h-4 w-auto"
+								src="/briefer.png"
+								alt="Briefer"
+								width={100}
+								height={100}
+							/>
 						</a>
 					</div>
 					<nav className="flex flex-1 flex-col">
 						<ul role="list" className="flex flex-1 flex-col gap-y-7">
 							<li>
 								<ul role="list" className="-mx-2 space-y-1">
-									{navigation.map((item) => (
+									{dashboardNavigation.map((item) => (
 										<li key={item.name}>
 											<a
 												href={item.href}
