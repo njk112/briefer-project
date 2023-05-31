@@ -15,7 +15,7 @@ export const textConfig = {
 			learnMoreButton: "Learn more",
 		},
 		featureSection: {
-			subTitle: "How it works",
+			subTitle: "What is Briefer?",
 			title: "Quickest way to summarise YouTube videos.",
 			paragraph:
 				"Briefer uses advanced AI to create concise summaries of lengthy YouTube videos. Get well-structured, ready-to-read summaries in PDF format, perfect for sharing and offline reading.",
