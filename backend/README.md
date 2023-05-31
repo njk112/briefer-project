@@ -4,6 +4,12 @@
 
 ## Table of Contents
 
+- [Description](#description)
+- [Installation](#installation)
+- [Running the app](#running-the-app)
+  - [npm](#npm)
+  - [Docker](#docker)
+- [Configuration](#configuration)
 - [Architecture](#architecture)
   - [Overall Architecture](#overall-architecture)
   - [Youtube Api](#youtube-api)
@@ -26,7 +32,7 @@
 
 ## Description
 
-Briefer, developed using the NestJS framework, is a web application designed to convert YouTube videos into summarized text briefings.
+Briefer backend, developed using the NestJS framework, is an application designed to convert YouTube videos into summarized text briefings.
 
 ## Installation
 
@@ -164,7 +170,7 @@ Several services power our application, including but not limited to:
 <p align="left">
   <a href="https://supabase.com/" target="blank"><img src="https://supabase.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fsupabase-logo-wordmark--dark.53d797e9.png&w=256&q=75" width="200" alt="Supabase logo" /></a>
 </p>
-We employ Supabase as our primary SQL database and file storage system.
+We employ Supabase as our primary POSTEGRESQL database and file storage system.
 
 ### **Upstash**
 

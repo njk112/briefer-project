@@ -1,34 +1,77 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+<p align="center">
+  <a href="" target="blank"><img src="./docs/briefer.png" width="200" alt="Briefer logo" /></a>
+</p>
 
-## Getting Started
+## Table of Contents
 
-First, run the development server:
+- [Description](#description)
+- [Installation](#installation)
+- [Running the App](#running-the-app)
+  - [npm](#npm)
+- [Configuration](#configuration)
+- [Architecture](#architecture)
+- [Services](#services)
+- [Additional Notes](#additional-notes)
+  - [Limitations](#limitations)
+
+## Description
+
+The Briefer frontend, crafted with the Next.js framework, serves as a user-friendly interface that collects and dispatches user requests for YouTube video summarization.
+
+## Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+$ npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Running the app
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### npm
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```bash
+# development
+$ npm run dev
 
-## Learn More
+# production mode
+$ npm run build && npm run start
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Configuration
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To run application succesfully the following `.env `variables are required:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```bash
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+BACKEND_ENDPOINT=
+```
 
-## Deploy on Vercel
+# Architecture
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+<img src="./docs/webflow.png" alt="Overall Web architecture"></img>
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+The Briefer frontend architecture is designed with user-friendly interactions in mind, facilitating a smooth navigation through its two main components: the Landing Page and the User Dashboard.
+
+1. **Landing Page**: Serving as the initial point of contact, the landing page provides a comprehensive overview of the product. .
+
+2. **User Dashboard:** Transitioning from the Landing Page, the User Dashboard offers an interactive interface for users to input their YouTube URLs and email address. This user input is gathered and then sent to our API route, marking the first step in the request handling process.
+
+3. **Rate Limiting Check**: Once the user input is received, a rate limiting check is performed via a Next.js API route backed by Redis. This mechanism ensures fair system usage by allowing one request per user every 15 minutes. If the check is successful, the user's request proceeds further.
+
+4. **Backend Communication**: Following successful validation, the user's request, containing the YouTube URLs and their email, is dispatched to the backend for processing.
+
+## Services
+
+### **Upstash**
+
+<p align="left">
+  <a href="https://docs.upstash.com/redis" target="blank"><img src="	https://upstash.com/static/logo/logo-dark.svg" width="200" alt="Upstash Logo" /></a>
+</p>
+
+Upstash Redis is being used to empower rate limiting.
+
+## Additional Notes
+
+### Limitations
+
+Given the time constraints, comprehensive testing could not be carried out for the application.
