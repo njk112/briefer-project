@@ -176,8 +176,10 @@ export class PdfGeneratorProcessor {
 
       await this.queueEmailSend(userId, brieferPdfReport.id);
       this.logger.debug('PDF_GENERATOR_WORKER: Pdf generated');
+      return {};
     } catch (error) {
       this.handleError(error);
+      return {};
     }
   }
 }
