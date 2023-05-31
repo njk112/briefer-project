@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
 		);
 	}
 	const limiter = await ratelimit.limit(email);
-	console.log({ limiter });
 	if (limiter.success === false) {
 		return NextResponse.json(
 			{ message: apiMessages.summary["415"] },
@@ -52,14 +51,32 @@ export async function POST(request: NextRequest) {
 			);
 		}
 	});
-	const data = {
-		message: "Hello World!",
-		status: 200,
-		headers: {
-			"X-RateLimit-Limit": `${limiter.limit}`,
-			"X-RateLimit-Remaining": `${limiter.remaining}`,
-		},
-	};
-
-	return NextResponse.json(data);
+	try {
+		const backendRes = await fetch(
+			`${process.env.BACKEND_ENDPOINT}/youtube/queue`,
+			{
+				method: "POST",
+				body: JSON.stringify({ userEmail: email, urls: youtubeUrls }),
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `${process.env.BACKEND_TOKEN}`,
+				},
+			}
+		);
+		const response = await backendRes.json();
+		const data = {
+			message: response.message,
+			status: 200,
+			headers: {
+				"X-RateLimit-Limit": `${limiter.limit}`,
+				"X-RateLimit-Remaining": `${limiter.remaining}`,
+			},
+		};
+		return NextResponse.json(data);
+	} catch (error) {
+		return NextResponse.json(
+			{ message: apiMessages.summary["500"] },
+			{ status: 500 }
+		);
+	}
 }

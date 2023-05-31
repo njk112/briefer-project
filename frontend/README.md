@@ -44,6 +44,7 @@ To run application succesfully the following `.env `variables are required:
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 BACKEND_ENDPOINT=
+BACKEND_TOKEN=
 ```
 
 # Architecture

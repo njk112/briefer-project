@@ -64,6 +64,7 @@ export const apiMessages = {
 		"417": "Email or Youtube urls are empty",
 		"418": "Please enter a valid email address.",
 		"419": "You can only summarize up to 5 videos at a time.",
+		"500": "Something went wrong. Please try again later.",
 	},
 };
 
