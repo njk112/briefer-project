@@ -72,13 +72,8 @@ export class PdfGeneratorProcessor {
 
   async createPdf(data: PdfGeneratorYoutubeVideo[]): Promise<Buffer> {
     try {
-      console.log('jonas1');
       const doc = this.createDocFromData(data);
-      console.log('jonas2');
-
       const buffer = await this.createBufferFromDoc(doc);
-      console.log('jonas4');
-
       return buffer;
     } catch (error) {
       this.handleError(error);
