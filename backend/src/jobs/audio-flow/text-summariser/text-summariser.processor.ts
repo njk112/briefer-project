@@ -123,66 +123,72 @@ export class TextSummariserProcessor {
   }
 
   @Process('summarise')
-  async handleSummarisation(job: Job<TextSummariserDto>): Promise<void> {
+  async handleSummarisation(job: Job<TextSummariserDto>) {
     this.logger.debug('TEXT_SUMMARISER_WORKER: Starting summarising text...');
     this.logger.debug({ TEXT_SUMMARISER_WORKER: { data: job.data } });
-    const { userId, fileId, briefingOrderId } = job.data;
+    try {
+      const { userId, fileId, briefingOrderId } = job.data;
 
-    const videoData = await this.youtubeVideoService.getYoutubeVideo(
-      {
-        youtubeId: fileId,
-      },
-      {
-        id: true,
-        YoutubeVideoSummary: {
-          select: {
-            summary: true,
-          },
-        },
-      },
-    );
-
-    if (videoData?.YoutubeVideoSummary?.summary) {
-      this.logger.debug('TEXT_SUMMARISER_WORKER: Video summary exists');
-    } else {
-      const textBlob = await this.downloadTextFile(fileId);
-      const textData = await textBlob.text();
-
-      const textChunks = this.processText(textData);
-
-      const gptAnswer = await this.openAiService.chatGptToSummary(textChunks);
-      await this.youtubeVideoSummaryService.createYoutubeVideoSummary({
-        summary: gptAnswer,
-        youtubeId: fileId,
-        YoutubeVideo: {
-          connect: {
-            id: videoData.id,
-          },
-        },
-      });
-    }
-    const briefingOrderCount =
-      await this.userBriefingOrderService.updateUserBriefingOrder(
+      const videoData = await this.youtubeVideoService.getYoutubeVideo(
         {
-          id: briefingOrderId,
+          youtubeId: fileId,
         },
         {
-          videosProccessed: {
-            increment: 1,
+          id: true,
+          YoutubeVideoSummary: {
+            select: {
+              summary: true,
+            },
           },
         },
       );
 
-    if (
-      briefingOrderCount.totalVideos === briefingOrderCount.videosProccessed
-    ) {
-      await this.queuePdfGeneration(userId, briefingOrderId);
-    } else {
-      this.logger.debug(
-        'TEXT_SUMMARISER_WORKER: More jobs have to be processed before pdf generation',
-      );
-    }
+      if (videoData?.YoutubeVideoSummary?.summary) {
+        this.logger.debug('TEXT_SUMMARISER_WORKER: Video summary exists');
+      } else {
+        const textBlob = await this.downloadTextFile(fileId);
+        const textData = await textBlob.text();
 
-    this.logger.debug('TEXT_SUMMARISER_WORKER: Text summarisation completed');
+        const textChunks = this.processText(textData);
+
+        const gptAnswer = await this.openAiService.chatGptToSummary(textChunks);
+        await this.youtubeVideoSummaryService.createYoutubeVideoSummary({
+          summary: gptAnswer,
+          youtubeId: fileId,
+          YoutubeVideo: {
+            connect: {
+              id: videoData.id,
+            },
+          },
+        });
+      }
+      const briefingOrderCount =
+        await this.userBriefingOrderService.updateUserBriefingOrder(
+          {
+            id: briefingOrderId,
+          },
+          {
+            videosProccessed: {
+              increment: 1,
+            },
+          },
+        );
+
+      if (
+        briefingOrderCount.totalVideos === briefingOrderCount.videosProccessed
+      ) {
+        await this.queuePdfGeneration(userId, briefingOrderId);
+      } else {
+        this.logger.debug(
+          'TEXT_SUMMARISER_WORKER: More jobs have to be processed before pdf generation',
+        );
+      }
+
+      this.logger.debug('TEXT_SUMMARISER_WORKER: Text summarisation completed');
+      return {};
+    } catch (error) {
+      this.handleError(error);
+      return {};
+    }
   }
 }

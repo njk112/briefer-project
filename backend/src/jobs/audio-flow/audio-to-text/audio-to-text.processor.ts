@@ -100,45 +100,49 @@ export class AudioToTextProcessor {
   }
 
   @Process('transcribe')
-  async handleAudioToText(job: Job<AudioToTextDto>): Promise<void> {
+  async handleAudioToText(job: Job<AudioToTextDto>) {
     this.logger.debug('AUDIO_TO_TEXT_WORKER: Start extracting audio...');
     this.logger.debug({ AUDIO_TO_TEXT_WORKER: { data: job.data } });
+    try {
+      const { userId, fileId, briefingOrderId } = job.data;
 
-    const { userId, fileId, briefingOrderId } = job.data;
-
-    const videoData = await this.youtubeVideoService.getYoutubeVideo(
-      {
-        youtubeId: fileId,
-      },
-      {
-        id: true,
-        YoutubeTextLink: {
-          select: {
-            textUrl: true,
+      const videoData = await this.youtubeVideoService.getYoutubeVideo(
+        {
+          youtubeId: fileId,
+        },
+        {
+          id: true,
+          YoutubeTextLink: {
+            select: {
+              textUrl: true,
+            },
           },
         },
-      },
-    );
+      );
 
-    if (videoData?.YoutubeTextLink?.textUrl) {
-      this.logger.debug('AUDIO_TO_TEXT_WORKER: Video text link exists');
-    } else {
-      const data = await this.downloadAudioFile(fileId);
-      const textData = await this.transcribeAudioFile(data, fileId);
-      await this.uploadTranscription(fileId, textData.text);
+      if (videoData?.YoutubeTextLink?.textUrl) {
+        this.logger.debug('AUDIO_TO_TEXT_WORKER: Video text link exists');
+      } else {
+        const data = await this.downloadAudioFile(fileId);
+        const textData = await this.transcribeAudioFile(data, fileId);
+        await this.uploadTranscription(fileId, textData.text);
 
-      await this.youtubeTextLinkService.createYoutubeTextLink({
-        textUrl: `${this.storageBucket}/${this.storageTextPath}/${fileId}${this.storageTextFormat}`,
-        youtubeId: fileId,
-        YoutubeVideo: {
-          connect: {
-            id: videoData.id,
+        await this.youtubeTextLinkService.createYoutubeTextLink({
+          textUrl: `${this.storageBucket}/${this.storageTextPath}/${fileId}${this.storageTextFormat}`,
+          youtubeId: fileId,
+          YoutubeVideo: {
+            connect: {
+              id: videoData.id,
+            },
           },
-        },
-      });
+        });
+      }
+      await this.queueTextSummary(userId, fileId, briefingOrderId);
+      this.logger.debug('AUDIO_TO_TEXT_WORKER: Audio download completed');
+      return {};
+    } catch (error) {
+      this.handleError(error);
+      return {};
     }
-    await this.queueTextSummary(userId, fileId, briefingOrderId);
-    this.logger.debug('AUDIO_TO_TEXT_WORKER: Audio download completed');
-    return;
   }
 }

@@ -186,9 +186,10 @@ export class AudioDownloaderProcessor {
 
       await this.queueAudioToText(userId, youtubeId, briefingOrderId);
       this.logger.log({ AUDIO_DOWNLOADER_WORKER: 'Job completed' });
-      return;
+      return {};
     } catch (error) {
       this.handleError(error);
+      return {};
     }
   }
 }

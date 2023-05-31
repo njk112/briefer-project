@@ -65,41 +65,46 @@ export class EmailSenderProcessor {
   async sendEmail(job: Job<EmailSendDto>) {
     this.logger.debug('EMAIL_SENDER_WORKER: Starting sending email...');
     this.logger.debug({ EMAIL_SENDER_WORKER: { data: job.data } });
+    try {
+      const { brieferPdfReportId, userId } = job.data;
 
-    const { brieferPdfReportId, userId } = job.data;
+      const pdfReport = await this.brieferPdfReportService.getBrieferPdfReport({
+        id: brieferPdfReportId,
+      });
 
-    const pdfReport = await this.brieferPdfReportService.getBrieferPdfReport({
-      id: brieferPdfReportId,
-    });
+      if (pdfReport?.isSent) {
+        this.logger.debug('EMAIL_SENDER_WORKER: Report has been already sent');
+      } else {
+        const pdfFile = await this.downloadPdfFile(pdfReport.fileName);
+        const arrayBuffer = await new Response(pdfFile).arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
-    if (pdfReport?.isSent) {
-      this.logger.debug('EMAIL_SENDER_WORKER: Report has been already sent');
-    } else {
-      const pdfFile = await this.downloadPdfFile(pdfReport.fileName);
-      const arrayBuffer = await new Response(pdfFile).arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+        const user = await this.userService.getUser({ id: userId });
 
-      const user = await this.userService.getUser({ id: userId });
+        const email = {
+          to: user.email,
+          from: this.fromEmail,
+          fromName: this.fromName,
+          subject: this.subject,
+          text: `${this.text} for ${pdfReport.fileName}`,
+          buffer,
+          fileName: pdfReport.fileName,
+          contentType: this.contentType,
+        };
 
-      const email = {
-        to: user.email,
-        from: this.fromEmail,
-        fromName: this.fromName,
-        subject: this.subject,
-        text: `${this.text} for ${pdfReport.fileName}`,
-        buffer,
-        fileName: pdfReport.fileName,
-        contentType: this.contentType,
-      };
-
-      const isSent = await this.mailJetService.sendEmail(email);
-      if (isSent) {
-        await this.brieferPdfReportService.updateBrieferPdfReport(
-          { id: pdfReport.id },
-          { isSent: true },
-        );
+        const isSent = await this.mailJetService.sendEmail(email);
+        if (isSent) {
+          await this.brieferPdfReportService.updateBrieferPdfReport(
+            { id: pdfReport.id },
+            { isSent: true },
+          );
+        }
+        this.logger.debug('EMAIL_SENDER_WORKER: Email sent');
+        return {};
       }
-      this.logger.debug('EMAIL_SENDER_WORKER: Email sent');
+    } catch (error) {
+      this.handleError(error);
+      return {};
     }
   }
 }

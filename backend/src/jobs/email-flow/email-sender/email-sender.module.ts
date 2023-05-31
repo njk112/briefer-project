@@ -10,6 +10,18 @@ import { BrieferPdfReportModule } from 'src/common/prisma-related/BrieferPdfRepo
   imports: [
     BullModule.registerQueue({
       name: 'email-sender',
+      defaultJobOptions: {
+        removeOnComplete: true,
+        attempts: 2,
+        removeOnFail: true,
+      },
+      limiter: {
+        max: 100,
+        duration: 1000,
+      },
+      settings: {
+        stalledInterval: 300000, // 5 minutes in milliseconds
+      },
     }),
     SupabaseModule,
     MailJetModule,
