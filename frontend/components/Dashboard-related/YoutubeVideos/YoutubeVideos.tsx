@@ -5,6 +5,7 @@ import { textConfig } from "@/app.config";
 import PositiveAlert from "@components/Dashboard-related/Alerts/PositiveAlert/PositiveAlert";
 import NegativeAlert from "@components/Dashboard-related/Alerts/NegativeAlert/NegativeAlert";
 import EmailInput from "@components/Dashboard-related/InputBars/EmailInput";
+import { classNames } from "@/utils/ClassNames";
 
 export default function AddVideos() {
 	const [youtubeUrl, setYoutubeUrl] = useState<string | null>(null);
@@ -58,7 +59,13 @@ export default function AddVideos() {
 				<button
 					onClick={handleSendRequest}
 					type="button"
-					className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+					disabled={youtubeUrlList.length === 0 || email === null}
+					className={classNames(
+						youtubeUrlList.length === 0 || email === null
+							? "bg-indigo-400"
+							: "bg-indigo-600",
+						"rounded-md  px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+					)}
 				>
 					{textConfig.dashboard.dashboard.sendButton}
 				</button>
