@@ -4,8 +4,7 @@
 
 ## Demo
 
-<a href="https://www.youtube.com/watch?v=CMrfRnUeGhs">
-  <a href="https://briefer-project.vercel.app/" target="blank"><img src="https://img.youtube.com/vi/CMrfRnUeGhs/0.jpg"  alt="Briefer logo" /></a>
+<a href="https://www.youtube.com/watch?v=CMrfRnUeGhs" target="blank"><img src="https://img.youtube.com/vi/CMrfRnUeGhs/0.jpg"  alt="Briefer logo" /></a>
 
 ## Landing Page
 
