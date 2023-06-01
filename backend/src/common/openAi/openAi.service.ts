@@ -94,6 +94,9 @@ export class OpenAiService {
         body: formData,
       });
       const textData: WhisperResponseDto = await res.json();
+      if (textData.error) {
+        this.handleError(textData.error, fileName);
+      }
       return textData;
     } catch (error) {
       this.handleError(error, fileName);
