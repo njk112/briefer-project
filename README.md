@@ -1,6 +1,11 @@
 <p align="center">
-  <a href="" target="blank"><img src="./backend/docs/briefer.png" width="200" alt="Briefer logo" /></a>
+  <a href="https://briefer-project.vercel.app/" target="blank"><img src="./backend/docs/briefer.png" width="200" alt="Briefer logo" /></a>
 </p>
+
+## Demo
+<a href="https://www.youtube.com/watch?v=CMrfRnUeGhs">
+  [![Briefer Demo Video](https://img.youtube.com/vi/CMrfRnUeGhs/0.jpg)](https://www.youtube.com/watch?v=CMrfRnUeGhs)
+</a>
 
 ## Landing Page
 

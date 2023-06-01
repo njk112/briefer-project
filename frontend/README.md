@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="" target="blank"><img src="./docs/briefer.png" width="200" alt="Briefer logo" /></a>
+  <a href="https://briefer-project.vercel.app/" target="blank"><img src="./docs/briefer.png" width="200" alt="Briefer logo" /></a>
 </p>
 
 ## Table of Contents
