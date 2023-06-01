@@ -66,7 +66,7 @@ The Briefer frontend architecture is designed with user-friendly interactions in
 ### **Upstash**
 
 <p align="left">
-  <a href="https://docs.upstash.com/redis" target="blank"><img src="	https://upstash.com/static/logo/logo-dark.svg" width="200" alt="Upstash Logo" /></a>
+  <a href="https://docs.upstash.com/redis" target="blank"><img src="https://upstash.com/static/logo/logo-dark.svg" width="200" alt="Upstash Logo" /></a>
 </p>
 
 Upstash Redis is being used to empower rate limiting.

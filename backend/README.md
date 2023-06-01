@@ -175,7 +175,7 @@ We employ Supabase as our primary POSTEGRESQL database and file storage system.
 ### **Upstash**
 
 <p align="left">
-  <a href="https://docs.upstash.com/redis" target="blank"><img src="	https://upstash.com/static/logo/logo-dark.svg" width="200" alt="Upstash Logo" /></a>
+  <a href="https://docs.upstash.com/redis" target="blank"><img src="https://upstash.com/static/logo/logo-dark.svg" width="200" alt="Upstash Logo" /></a>
 </p>
 
 Upstash Redis is being used to empower of queues.
@@ -191,7 +191,7 @@ Prisma serves as our Object-Relational Mapping (ORM) solution.
 ### **OpenAI**
 
 <p align="left">
-  <a href="https://openai.com/blog/openai-api" target="blank"><img src="https://static.cdnlogo.com/logos/o/29/OpenAI-Logo_800x800.png" width="200" alt="Nest Logo" /></a>
+  <a href="https://openai.com/blog/openai-api" target="blank"><img src="https://static.cdnlogo.com/logos/o/29/OpenAI-Logo_800x800.png" width="200" alt="Open AI logo" /></a>
 </p>
 
 We use OpenAI for tasks such as generating text from audio and summarizing text.
@@ -199,7 +199,7 @@ We use OpenAI for tasks such as generating text from audio and summarizing text.
 ### **Mailjet**
 
 <p align="left">
-  <a href="https://www.mailjet.com/" target="blank"><img src="	https://seeklogo.com/images/M/mailjet-logo-7A0D6B2E87-seeklogo.com.png" width="100" alt="Nest Logo" /></a>
+  <a href="https://www.mailjet.com/" target="blank"><img src="https://seeklogo.com/images/M/mailjet-logo-7A0D6B2E87-seeklogo.com.png" width="100" alt="Mail jet logo" /></a>
 </p>
 
 Mailjet facilitates our email communication with users.
